@@ -1,0 +1,1548 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yard Tracker</title>
+<style>
+  :root{
+    --bg:#faf9f6;
+    --surface:#ffffff;
+    --ink:#4a4438;
+    --ink-soft:#948a76;
+    --line:#e9e4d8;
+    --accent:#82ab8b;
+    --accent-soft:#e6f0e5;
+    --blue-gray:#9bb4cd;
+    --blue-gray-soft:#e9f0f6;
+    --warn:#d98f6c;
+    --warn-soft:#fae8dc;
+    --gold:#cc9f3f;
+    --gold-soft:#faf0d6;
+    --pink:#d99cae;
+    --pink-soft:#f8e9ee;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(150,120,70,0.05), 0 6px 18px rgba(150,120,70,0.08);
+  }
+  /* Always light — garden palette stays consistent regardless of system dark mode. */
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45;
+  }
+  h1,h2,h3,h4{ font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:600; margin:0 0 4px; }
+  .wrap{ max-width:1120px; margin:0 auto; padding:28px 24px 80px; }
+
+  header.top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  header.top h1{ font-size:26px; }
+  header.top .sub{ color:var(--ink-soft); font-size:14px; }
+  .conn-panel{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; font-size:13px; color:var(--ink-soft); }
+  .conn-row{ display:flex; gap:8px; align-items:center; }
+
+  .btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.ghost{ background:transparent; }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn.small{ padding:4px 10px; font-size:12px; }
+
+  nav.tabs{ display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:22px; flex-wrap:wrap; }
+  .tab-btn{ background:none; border:none; padding:10px 14px; font-size:14px; color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab-btn.active{ color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .grid{ display:grid; gap:16px; }
+  .grid.stats{ grid-template-columns:repeat(4,1fr); margin-bottom:18px; }
+  @media (max-width:760px){ .grid.stats{ grid-template-columns:repeat(2,1fr); } }
+  .stat-tile{ background:var(--surface); border:1px solid var(--line); border-top:3px solid var(--accent); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); }
+  .stat-tile:nth-child(2){ border-top-color:var(--blue-gray); }
+  .stat-tile:nth-child(3){ border-top-color:var(--warn); }
+  .stat-tile:nth-child(4){ border-top-color:var(--pink); }
+  .stat-tile .label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; }
+  .stat-tile .value{ font-family:Georgia,serif; font-size:24px; margin-top:4px; }
+
+  .section-title{ display:flex; justify-content:space-between; align-items:center; margin:26px 0 10px; }
+  .section-title h2{ font-size:17px; }
+
+  .empty{ color:var(--ink-soft); font-size:13px; font-style:italic; }
+
+  .log-row{ display:grid; grid-template-columns:90px 1fr 90px 64px; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); align-items:start; }
+  .log-row:last-child{ border-bottom:none; }
+  .log-date{ font-size:12px; color:var(--ink-soft); padding-top:2px; }
+  .log-title{ font-weight:600; font-size:14px; }
+  .log-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .log-notes{ font-size:13px; margin-top:6px; white-space:pre-wrap; }
+  .log-attachments{ margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; }
+  .log-cost{ font-size:13px; text-align:right; padding-top:2px; }
+  .log-actions{ display:flex; gap:4px; justify-content:flex-end; }
+  .icon-btn{ border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:14px; padding:2px 4px; }
+  .icon-btn:hover{ color:var(--warn); }
+
+  .chip{ display:inline-flex; align-items:center; gap:6px; background:var(--blue-gray-soft); color:var(--ink); border:none; border-radius:14px; padding:4px 10px; font-size:12px; cursor:pointer; }
+  .chip.removable{ padding:2px 4px 2px 10px; }
+  .chip-remove{ border:none; background:none; cursor:pointer; color:var(--warn); font-size:12px; padding:2px 6px; }
+  .badge{ display:inline-block; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600; margin-left:6px; white-space:nowrap; }
+  .badge.zone{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.type{ background:var(--accent-soft); color:var(--accent); }
+  .badge.status-Active{ background:var(--accent-soft); color:var(--accent); }
+  .badge.status-Removed, .badge.status-Dead{ background:var(--line); color:var(--ink-soft); }
+  .badge.sev-Monitor{ background:var(--line); color:var(--ink-soft); }
+  .badge.sev-Needs{ background:var(--warn-soft); color:var(--warn); }
+  .badge.sev-Urgent{ background:var(--warn); color:#fff; font-weight:700; }
+  .badge.ist-Monitoring{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.ist-Treating{ background:var(--gold-soft); color:var(--gold); }
+  .badge.ist-Resolved{ background:var(--ink); color:var(--bg); }
+  .badge.ist-Lost{ background:var(--warn); color:#fff; }
+  .badge.due-overdue{ background:var(--warn); color:#fff; }
+  .badge.due-soon{ background:var(--gold-soft); color:var(--gold); }
+
+  .warn-banner{ background:var(--warn-soft); border:1px solid var(--warn); border-radius:var(--radius); padding:12px 16px; margin-bottom:18px; font-size:13px; color:var(--warn); }
+  .warn-banner strong{ display:block; margin-bottom:4px; font-size:14px; }
+  .warn-banner ul{ margin:4px 0 0; padding-left:18px; }
+
+  .filter-bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .filter-bar input, .filter-bar select{ padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); font-size:13px; }
+  .filter-bar input[type="text"]{ min-width:180px; }
+
+  .plant-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+  .plant-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); cursor:pointer; transition:border-color .15s, transform .15s; }
+  .plant-card:hover{ border-color:var(--pink); transform:translateY(-1px); }
+  .plant-card .pc-name{ font-weight:600; font-size:14px; }
+  .plant-card .pc-species{ font-size:12px; color:var(--ink-soft); font-style:italic; margin-top:1px; }
+  .plant-card .pc-meta{ font-size:12px; color:var(--ink-soft); margin-top:8px; display:flex; flex-wrap:wrap; gap:4px; }
+  .plant-card .pc-flags{ margin-top:8px; font-size:12px; }
+  .plant-card .pc-flags .flag-issue{ color:var(--warn); }
+  .plant-card .pc-flags .flag-due{ color:var(--gold); }
+
+  .schedule-row{ display:grid; grid-template-columns:1fr 130px 150px auto; gap:12px; align-items:center; padding:12px 0; border-bottom:1px solid var(--line); }
+  .schedule-row:last-child{ border-bottom:none; }
+  .schedule-title{ font-weight:600; font-size:14px; }
+  .schedule-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .schedule-due{ font-size:13px; }
+  .schedule-actions{ display:flex; gap:6px; justify-content:flex-end; flex-wrap:wrap; }
+  .group-heading{ font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin:20px 0 4px; }
+  .group-heading:first-child{ margin-top:0; }
+
+  .rhythm-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:10px; margin-bottom:22px; }
+  .rhythm-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:10px 12px; box-shadow:var(--shadow); min-height:90px; }
+  .rhythm-card.current{ border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), var(--shadow); }
+  .rhythm-card h4{ font-size:12px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:6px; }
+  .rhythm-card.current h4{ color:var(--accent); }
+  .rhythm-card ul{ margin:0; padding-left:16px; font-size:12px; }
+  .rhythm-card li{ margin-bottom:2px; }
+
+  .issue-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); margin-bottom:12px; }
+  .issue-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; flex-wrap:wrap; }
+  .issue-title{ font-weight:600; font-size:14px; }
+  .issue-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .timeline{ margin-top:10px; padding-left:14px; border-left:2px solid var(--line); }
+  .timeline-item{ position:relative; padding:2px 0 10px 14px; font-size:13px; }
+  .timeline-item:before{ content:""; position:absolute; left:-19px; top:6px; width:8px; height:8px; border-radius:50%; background:var(--accent); }
+  .timeline-item .t-date{ font-size:11px; color:var(--ink-soft); }
+  .timeline-item .t-note{ white-space:pre-wrap; margin-top:1px; }
+  .issue-actions{ display:flex; gap:6px; margin-top:10px; flex-wrap:wrap; }
+
+  table.plant-table{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.plant-table th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); border-bottom:1px solid var(--line); padding:6px 8px; }
+  table.plant-table td{ border-bottom:1px solid var(--line); padding:9px 8px; vertical-align:top; }
+  table.plant-table tr:last-child td{ border-bottom:none; }
+
+  dialog{ border:none; padding:0; border-radius:var(--radius); width:min(600px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+  dialog::backdrop{ background:rgba(20,20,15,0.45); }
+  dialog form{ padding:20px 22px 18px; display:flex; flex-direction:column; gap:12px; }
+  dialog label{ font-size:13px; display:flex; flex-direction:column; gap:4px; color:var(--ink-soft); }
+  dialog input, dialog select, dialog textarea{ font-family:inherit; font-size:14px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+  dialog textarea{ min-height:70px; resize:vertical; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .three-col{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+  .dialog-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  .month-picker{ display:grid; grid-template-columns:repeat(4,1fr); gap:6px; font-size:12px; }
+  .month-picker label{ flex-direction:row; align-items:center; gap:6px; font-size:12px; color:var(--ink); }
+  .recur-fields{ display:none; flex-direction:column; gap:10px; padding:10px; border:1px dashed var(--line); border-radius:8px; }
+  .recur-fields.active{ display:flex; }
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+
+  #filesDialogBody h4{ font-size:13px; margin:14px 0 6px; }
+  #filesDialogBody .file-chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
+
+  #plantDetailBody h3{ font-size:18px; }
+  #plantDetailBody .pd-meta{ color:var(--ink-soft); font-size:13px; margin-bottom:10px; }
+  #plantDetailBody .pd-section{ margin-top:18px; }
+  #plantDetailBody .pd-section h4{ font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:8px; }
+
+  footer.foot{ margin-top:40px; font-size:12px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>🌿 Yard Tracker</h1>
+      <div class="sub">Rowayton / Norwalk, CT</div>
+    </div>
+    <div class="conn-panel">
+      <div class="conn-row" id="signedOutRow">
+        <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" style="width:150px;">
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" style="width:120px;">
+        <button class="btn small" id="loginBtn">Sign in</button>
+      </div>
+      <div class="conn-row" id="signedInRow" style="display:none;">
+        <span id="connStatus">Not signed in</span>
+        <button class="btn ghost small" id="logoutBtn">Sign out</button>
+      </div>
+      <div class="conn-row">
+        <button class="btn ghost small" id="exportBtn">Export backup (.json)</button>
+        <label class="btn ghost small" style="cursor:pointer;">Import
+          <input type="file" id="importInput" accept="application/json" style="display:none;">
+        </label>
+      </div>
+    </div>
+  </header>
+  <p class="hint" id="loginError" style="color:var(--warn); display:none;"></p>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tab-dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="tab-plants">Plants</button>
+    <button class="tab-btn" data-tab="tab-schedule">Care Schedule</button>
+    <button class="tab-btn" data-tab="tab-activity">Activity Log</button>
+    <button class="tab-btn" data-tab="tab-issues">Issues</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section id="tab-dashboard" class="tab-panel active">
+    <div class="grid stats">
+      <div class="stat-tile"><div class="label">Active plants</div><div class="value" id="statPlants">0</div></div>
+      <div class="stat-tile"><div class="label">Due this week</div><div class="value" id="statDueWeek">0</div></div>
+      <div class="stat-tile"><div class="label">Overdue tasks</div><div class="value" id="statOverdue">0</div></div>
+      <div class="stat-tile"><div class="label">Open issues</div><div class="value" id="statOpenIssues">0</div></div>
+    </div>
+
+    <div id="overdueBanner"></div>
+    <div id="urgentIssueBanner"></div>
+
+    <div class="section-title"><h2>Due this week</h2><button class="btn small" data-action="add-task">+ Add care task</button></div>
+    <div class="card" id="dueThisWeek"></div>
+
+    <div class="section-title"><h2>Open issues</h2><button class="btn small" data-action="add-issue">+ Log issue</button></div>
+    <div class="card" id="dashIssues"></div>
+
+    <div class="section-title"><h2>Recent activity</h2><button class="btn small" data-action="add-log">+ Log activity</button></div>
+    <div class="card" id="recentActivity"></div>
+  </section>
+
+  <!-- PLANTS -->
+  <section id="tab-plants" class="tab-panel">
+    <div class="section-title"><h2>Plant &amp; Zone Library</h2><button class="btn primary" data-action="add-plant">+ Add plant</button></div>
+    <form id="plantFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterPSearch" placeholder="Search name, species, notes…">
+      <select id="filterPZone"><option value="">All zones</option></select>
+      <select id="filterPType"><option value="">All types</option></select>
+      <select id="filterPStatus">
+        <option value="">All statuses</option>
+        <option>Active</option>
+        <option>Removed</option>
+        <option>Dead</option>
+      </select>
+      <button type="button" class="btn ghost small" id="filterPClear">Clear</button>
+    </form>
+    <div class="plant-grid" id="plantGrid"></div>
+  </section>
+
+  <!-- CARE SCHEDULE -->
+  <section id="tab-schedule" class="tab-panel">
+    <div class="section-title"><h2>Yearly Rhythm</h2></div>
+    <p class="hint" style="margin-top:-8px;">Recurring tasks tied to a calendar month — this month is highlighted.</p>
+    <div class="rhythm-grid" id="rhythmGrid"></div>
+
+    <div class="section-title"><h2>Care Schedule</h2><button class="btn primary" data-action="add-task">+ Add care task</button></div>
+    <form id="taskFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterTSearch" placeholder="Search task, plant…">
+      <select id="filterTZone"><option value="">All zones</option></select>
+      <select id="filterTType"><option value="">All task types</option></select>
+      <button type="button" class="btn ghost small" id="filterTClear">Clear</button>
+    </form>
+    <div class="card" id="scheduleList"></div>
+  </section>
+
+  <!-- ACTIVITY LOG -->
+  <section id="tab-activity" class="tab-panel">
+    <div class="section-title"><h2>Activity Log</h2><button class="btn primary" data-action="add-log">+ Log activity</button></div>
+    <p class="hint" style="margin-top:-8px;">Auto-filled when you mark a care task done, plus anything you log by hand.</p>
+    <form id="logFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterLSearch" placeholder="Search title, notes…">
+      <select id="filterLPlant"><option value="">All plants</option></select>
+      <select id="filterLCategory"><option value="">All categories</option></select>
+      <input type="date" id="filterLFrom" title="From date">
+      <input type="date" id="filterLTo" title="To date">
+      <button type="button" class="btn ghost small" id="filterLClear">Clear</button>
+    </form>
+    <div class="card" id="activityList"></div>
+  </section>
+
+  <!-- ISSUES -->
+  <section id="tab-issues" class="tab-panel">
+    <div class="section-title"><h2>Issues</h2><button class="btn primary" data-action="add-issue">+ Log issue</button></div>
+    <form id="issueFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterISearch" placeholder="Search title, notes…">
+      <select id="filterIStatus">
+        <option value="">All statuses</option>
+        <option>Monitoring</option>
+        <option>Treating</option>
+        <option>Resolved</option>
+        <option>Lost Plant</option>
+      </select>
+      <select id="filterISeverity">
+        <option value="">All severities</option>
+        <option>Monitor</option>
+        <option>Needs Attention</option>
+        <option>Urgent — At Risk</option>
+      </select>
+      <button type="button" class="btn ghost small" id="filterIClear">Clear</button>
+    </form>
+    <div id="issuesList"></div>
+  </section>
+
+  <footer class="foot">
+    Data syncs live to the cloud while you're signed in. Photos and receipts are stored per plant/issue.
+    Use Export regularly as a local backup regardless of sync status.
+  </footer>
+</div>
+
+<!-- PLANT DIALOG -->
+<dialog id="plantDialog">
+  <form id="plantForm">
+    <h3 id="plantDialogTitle">Add Plant</h3>
+    <label>Name <input type="text" name="name" required placeholder="e.g. Front bed hydrangea (left)"></label>
+    <label>Species / cultivar <input type="text" name="species" placeholder="e.g. Hydrangea macrophylla 'Endless Summer'"></label>
+    <div class="two-col">
+      <label>Type
+        <select name="type">
+          <option>Tree</option>
+          <option>Shrub</option>
+          <option>Hedge</option>
+          <option>Perennial</option>
+          <option>Ornamental Grass</option>
+          <option>Groundcover</option>
+          <option>Bulb / Annual</option>
+          <option>Lawn / Turf</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Zone
+        <select name="zone">
+          <option>Front Yard</option>
+          <option>Side Yard / Passway</option>
+          <option>Back Yard</option>
+          <option>Patio / Deck</option>
+          <option>Driveway / Entry</option>
+          <option>Lawn (General)</option>
+          <option>Other</option>
+        </select>
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Sun exposure
+        <select name="sun">
+          <option>Full Sun</option>
+          <option>Partial Sun</option>
+          <option>Partial Shade</option>
+          <option>Full Shade</option>
+          <option>Unknown</option>
+        </select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option>Active</option>
+          <option>Removed</option>
+          <option>Dead</option>
+        </select>
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Planted date <input type="date" name="plantedDate"></label>
+      <label>Source / nursery <input type="text" name="source" placeholder="e.g. local nursery, previous owner"></label>
+    </div>
+    <label>Notes <textarea name="notes" placeholder="Care quirks, placement notes, history…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="plantCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Plant</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- PLANT DETAIL DIALOG -->
+<dialog id="plantDetailDialog">
+  <div style="padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div id="plantDetailBody" style="flex:1;"></div>
+      <button class="btn ghost small" id="plantDetailClose">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- TASK DIALOG -->
+<dialog id="taskDialog">
+  <form id="taskForm">
+    <h3 id="taskDialogTitle">Add Care Task</h3>
+    <label>Task <input type="text" name="title" required placeholder="e.g. Fertilize, Prune after bloom, Mulch beds"></label>
+    <div class="two-col">
+      <label>Task type
+        <select name="taskType">
+          <option>Water</option>
+          <option>Fertilize</option>
+          <option>Prune / Deadhead</option>
+          <option>Mulch</option>
+          <option>Weed</option>
+          <option>Pest / Disease Treatment</option>
+          <option>Winterize / Protect</option>
+          <option>Inspect</option>
+          <option>Divide / Transplant</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Applies to
+        <select name="plantId"></select>
+      </label>
+    </div>
+    <label>Or a zone instead of one plant (leave plant as "General" above)
+      <select name="zone">
+        <option value="">— none —</option>
+        <option>Front Yard</option>
+        <option>Side Yard / Passway</option>
+        <option>Back Yard</option>
+        <option>Patio / Deck</option>
+        <option>Driveway / Entry</option>
+        <option>Lawn (General)</option>
+        <option>Other</option>
+      </select>
+    </label>
+    <label>Recurrence
+      <select name="recurType" id="recurTypeSelect">
+        <option value="once">One-time</option>
+        <option value="interval">Every N days</option>
+        <option value="annual">Certain months, every year</option>
+      </select>
+    </label>
+    <div class="recur-fields" id="recurOnceFields">
+      <label>Due date <input type="date" name="onceDate"></label>
+    </div>
+    <div class="recur-fields" id="recurIntervalFields">
+      <label>Repeat every <input type="number" name="intervalDays" min="1" placeholder="e.g. 14"> days</label>
+      <label>Next due date <input type="date" name="intervalNextDue"></label>
+    </div>
+    <div class="recur-fields" id="recurAnnualFields">
+      <div class="month-picker" id="monthPicker">
+        <label><input type="checkbox" name="months" value="1">Jan</label>
+        <label><input type="checkbox" name="months" value="2">Feb</label>
+        <label><input type="checkbox" name="months" value="3">Mar</label>
+        <label><input type="checkbox" name="months" value="4">Apr</label>
+        <label><input type="checkbox" name="months" value="5">May</label>
+        <label><input type="checkbox" name="months" value="6">Jun</label>
+        <label><input type="checkbox" name="months" value="7">Jul</label>
+        <label><input type="checkbox" name="months" value="8">Aug</label>
+        <label><input type="checkbox" name="months" value="9">Sep</label>
+        <label><input type="checkbox" name="months" value="10">Oct</label>
+        <label><input type="checkbox" name="months" value="11">Nov</label>
+        <label><input type="checkbox" name="months" value="12">Dec</label>
+      </div>
+      <label>Next due date (override) <input type="date" name="annualNextDue"></label>
+    </div>
+    <label>Instructions / notes <textarea name="notes" placeholder="Rate, product, technique, reminders…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="taskCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Task</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- COMPLETE TASK DIALOG -->
+<dialog id="completeDialog">
+  <form id="completeForm">
+    <h3>Mark Task Done</h3>
+    <label>Date completed <input type="date" name="date" required></label>
+    <label>Cost (optional) <input type="number" name="cost" step="0.01" min="0" placeholder="0.00"></label>
+    <label>Notes <textarea name="notes" placeholder="What was done, product used, condition observed…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="completeCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save &amp; Reschedule</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- LOG ENTRY DIALOG -->
+<dialog id="logDialog">
+  <form id="logForm">
+    <h3 id="logDialogTitle">Log Activity</h3>
+    <label>Date <input type="date" name="date" required></label>
+    <label>Plant (optional) <select name="plantId"></select></label>
+    <label>Title <input type="text" name="title" required placeholder="e.g. Applied grub control, planted new azaleas"></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Water</option>
+          <option>Fertilize</option>
+          <option>Prune / Deadhead</option>
+          <option>Mulch</option>
+          <option>Weed</option>
+          <option>Pest / Disease Treatment</option>
+          <option>Planting</option>
+          <option>Winterize / Protect</option>
+          <option>Inspect</option>
+          <option>Divide / Transplant</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Cost <input type="number" name="cost" step="0.01" min="0" placeholder="0.00"></label>
+    </div>
+    <label>Notes <textarea name="notes"></textarea></label>
+    <label>Attach photos/receipts <input type="file" name="attachments" multiple></label>
+    <div id="existingLogAttachments" class="log-attachments"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="logCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Entry</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ISSUE DIALOG -->
+<dialog id="issueDialog">
+  <form id="issueForm">
+    <h3 id="issueDialogTitle">Log Issue</h3>
+    <label>Date noticed <input type="date" name="dateNoticed" required></label>
+    <label>Title / symptom <input type="text" name="title" required placeholder="e.g. Browning leaves on front hydrangea"></label>
+    <label>Plant (optional) <select name="plantId"></select></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Disease</option>
+          <option>Pest</option>
+          <option>Environmental / Stress</option>
+          <option>Watering</option>
+          <option>Winter Damage</option>
+          <option>Unknown</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Severity
+        <select name="severity">
+          <option>Monitor</option>
+          <option selected>Needs Attention</option>
+          <option>Urgent — At Risk</option>
+        </select>
+      </label>
+    </div>
+    <label>Status
+      <select name="status">
+        <option>Monitoring</option>
+        <option>Treating</option>
+        <option>Resolved</option>
+        <option>Lost Plant</option>
+      </select>
+    </label>
+    <label id="initialNoteLabel">Initial notes <textarea name="notes" placeholder="What you're seeing, when it started…"></textarea></label>
+    <label>Attach photos <input type="file" name="attachments" multiple accept="image/*"></label>
+    <div id="existingIssueAttachments" class="log-attachments"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="issueCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Issue</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ISSUE UPDATE DIALOG -->
+<dialog id="issueUpdateDialog">
+  <form id="issueUpdateForm">
+    <h3>Add Update</h3>
+    <label>Date <input type="date" name="date" required></label>
+    <label>Status
+      <select name="status">
+        <option>Monitoring</option>
+        <option>Treating</option>
+        <option>Resolved</option>
+        <option>Lost Plant</option>
+      </select>
+    </label>
+    <label>What's changed / what you tried <textarea name="note" required placeholder="e.g. Applied neem oil, still browning at edges"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="issueUpdateCancel">Cancel</button>
+      <button type="submit" class="btn primary">Add Update</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- FILES DIALOG -->
+<dialog id="filesDialog">
+  <div style="padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="filesDialogTitle">Files</h3>
+      <button class="btn ghost small" id="filesDialogClose">Close</button>
+    </div>
+    <div id="filesDialogBody"></div>
+  </div>
+</dialog>
+
+<script type="module">
+import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, deleteFile } from "./firebase-sync.js";
+(function(){
+  "use strict";
+
+  const DOC_PATH = "trackers/yard";
+  const ZONES = ["Front Yard","Side Yard / Passway","Back Yard","Patio / Deck","Driveway / Entry","Lawn (General)","Other"];
+  const PLANT_TYPES = ["Tree","Shrub","Hedge","Perennial","Ornamental Grass","Groundcover","Bulb / Annual","Lawn / Turf","Other"];
+  const TASK_TYPES = ["Water","Fertilize","Prune / Deadhead","Mulch","Weed","Pest / Disease Treatment","Winterize / Protect","Inspect","Divide / Transplant","Other"];
+  const LOG_CATEGORIES = ["Water","Fertilize","Prune / Deadhead","Mulch","Weed","Pest / Disease Treatment","Planting","Winterize / Protect","Inspect","Divide / Transplant","Other"];
+  const MONTH_NAMES = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const SEV_KEY = { "Monitor":"Monitor", "Needs Attention":"Needs", "Urgent — At Risk":"Urgent" };
+  const ISTATUS_KEY = { "Monitoring":"Monitoring", "Treating":"Treating", "Resolved":"Resolved", "Lost Plant":"Lost" };
+
+  const qs = (s,r)=> (r||document).querySelector(s);
+  const qsa = (s,r)=> Array.from((r||document).querySelectorAll(s));
+  const sum = arr => arr.reduce((a,b)=>a+(b||0),0);
+  const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
+  const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const escapeAttr = escapeHtml;
+  const todayStr = ()=> new Date().toISOString().slice(0,10);
+  const formatCurrency = n => (n==null) ? "" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
+  const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
+  const daysBetween = (a,b)=> Math.round((new Date(b+"T00:00:00") - new Date(a+"T00:00:00")) / 86400000);
+  const addDays = (dateStr, n) => { const dt = new Date(dateStr+"T00:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
+  const sanitizeFolderName = name => (name||"").replace(/[<>:"\/\\|?*]/g,"").trim().slice(0,100) || "Untitled";
+  const sanitizeFileName = name => (name||"file").replace(/[<>:"\/\\|?*]/g,"_").trim().slice(0,150);
+
+  let state = { version:1, updatedAt:0, plants:[], tasks:[], activityLog:[], issues:[] };
+  let currentUser = null;
+  let unsubscribeDoc = null;
+  let saveTimer = null;
+  let plantFilters = { search:"", zone:"", type:"", status:"" };
+  let taskFilters = { search:"", zone:"", type:"" };
+  let logFilters = { search:"", plantId:"", category:"", from:"", to:"" };
+  let issueFilters = { search:"", status:"", severity:"" };
+
+  // ---------- Persistence ----------
+  function saveLocal(){ localStorage.setItem("yardTrackerData", JSON.stringify(state)); }
+  function persist(){
+    state.updatedAt = Date.now();
+    saveLocal();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      if(!currentUser) return;
+      saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e));
+    }, 350);
+  }
+
+  function emptyState(){
+    return { version:1, updatedAt: Date.now(), plants:[], tasks:[], activityLog:[], issues:[] };
+  }
+  function normalizeState(s){
+    if(!s.plants) s.plants = [];
+    if(!s.tasks) s.tasks = [];
+    if(!s.activityLog) s.activityLog = [];
+    if(!s.issues) s.issues = [];
+    s.issues.forEach(i=>{ if(!i.updates) i.updates = []; if(!i.attachments) i.attachments = []; if(!i.folderName) i.folderName = sanitizeFolderName(i.title); });
+    s.plants.forEach(p=>{ if(!p.folderName) p.folderName = sanitizeFolderName(p.name); });
+    return s;
+  }
+
+  // ---------- Attachment storage helpers (Firebase Storage stands in for local folders) ----------
+  function storagePathFor(pathArr){ return ["yard", ...pathArr].join("/"); }
+  async function uploadAttachment(pathArr, file){
+    const safeName = `${Date.now()}-${Math.random().toString(16).slice(2,6)}-${sanitizeFileName(file.name)}`;
+    const url = await uploadFile(storagePathFor([...pathArr, safeName]), file, file.name);
+    return { name: safeName, originalName: file.name, url, addedAt: Date.now() };
+  }
+  function attachmentPathForLog(entry){
+    if(entry.plantId){
+      const p = getPlantById(entry.plantId);
+      if(p) return ["Plants", p.folderName, "Photos"];
+    }
+    return ["General Activity","Receipts"];
+  }
+  function attachmentPathForIssue(issue){
+    return ["Issues", issue.folderName, "Photos"];
+  }
+
+  // ---------- Auth flow ----------
+  function setConnStatus(text){ qs("#connStatus").textContent = text; }
+
+  async function onDataSnapshot(data, isLocalEcho){
+    if(isLocalEcho) return;
+    if(data){
+      state = normalizeState(data);
+    } else {
+      state = emptyState();
+      await saveDoc(DOC_PATH, state);
+    }
+    saveLocal();
+    renderAll();
+  }
+
+  function showSignedIn(user){
+    currentUser = user;
+    qs("#signedOutRow").style.display = "none";
+    qs("#signedInRow").style.display = "";
+    setConnStatus("Signed in: " + user.email);
+    if(unsubscribeDoc) unsubscribeDoc();
+    unsubscribeDoc = watchDoc(DOC_PATH, onDataSnapshot);
+  }
+  function showSignedOut(){
+    currentUser = null;
+    if(unsubscribeDoc){ unsubscribeDoc(); unsubscribeDoc = null; }
+    qs("#signedOutRow").style.display = "";
+    qs("#signedInRow").style.display = "none";
+  }
+  async function handleLogin(){
+    const email = qs("#loginEmail").value.trim();
+    const password = qs("#loginPassword").value;
+    const errEl = qs("#loginError");
+    errEl.style.display = "none";
+    try{
+      await login(email, password);
+      qs("#loginPassword").value = "";
+    }catch(e){
+      errEl.textContent = "Sign-in failed: " + e.message;
+      errEl.style.display = "";
+    }
+  }
+
+  // ---------- Derived data ----------
+  function getPlantById(id){ return state.plants.find(p=>p.id===id) || null; }
+  function getTaskById(id){ return state.tasks.find(t=>t.id===id) || null; }
+  function getIssueById(id){ return state.issues.find(i=>i.id===id) || null; }
+  function plantLabel(id){ const p = getPlantById(id); return p ? p.name : null; }
+  function taskSubjectLabel(t){ return t.plantId ? plantLabel(t.plantId) : (t.zone || "General"); }
+  function activeTasks(){ return state.tasks.filter(t=>t.active!==false); }
+  function openIssues(){ return state.issues.filter(i=> i.status!=="Resolved" && i.status!=="Lost Plant"); }
+
+  function recurrenceSummary(t){
+    if(t.recurrence.type==="once") return "One-time";
+    if(t.recurrence.type==="interval") return `Every ${t.recurrence.intervalDays} days`;
+    if(t.recurrence.type==="annual"){
+      const months = (t.recurrence.months||[]).slice().sort((a,b)=>a-b).map(m=>MONTH_NAMES[m-1]);
+      return "Every year: " + (months.join(", ") || "—");
+    }
+    return "";
+  }
+  function computeNextAnnualDue(months, fromDateStr){
+    if(!months || !months.length) return null;
+    const sorted = months.slice().sort((a,b)=>a-b);
+    const from = new Date(fromDateStr+"T00:00:00");
+    const fromMonth = from.getMonth()+1, fromYear = from.getFullYear();
+    let nextMonth = sorted.find(m=> m > fromMonth);
+    let nextYear = fromYear;
+    if(nextMonth==null){ nextMonth = sorted[0]; nextYear = fromYear+1; }
+    return `${nextYear}-${String(nextMonth).padStart(2,"0")}-01`;
+  }
+  function dueBucket(dueDateStr){
+    if(!dueDateStr) return "later";
+    const today = todayStr();
+    const diff = daysBetween(today, dueDateStr);
+    if(diff < 0) return "overdue";
+    if(diff <= 7) return "week";
+    if(diff <= 30) return "month";
+    return "later";
+  }
+
+  // ---------- Task completion ----------
+  function completeTask(taskId, date, notes, cost){
+    const t = getTaskById(taskId);
+    if(!t) return;
+    const entry = {
+      id: uid(), date, title: t.title, category: t.taskType,
+      plantId: t.plantId || null, zone: t.zone || null,
+      taskId: t.id, notes: (notes||"").trim(), cost: cost!=null?Number(cost):null,
+      createdAt: Date.now()
+    };
+    state.activityLog.push(entry);
+    t.lastCompleted = date;
+    if(t.recurrence.type==="once"){
+      t.active = false; t.nextDue = null;
+    } else if(t.recurrence.type==="interval"){
+      t.nextDue = addDays(date, t.recurrence.intervalDays);
+    } else if(t.recurrence.type==="annual"){
+      t.nextDue = computeNextAnnualDue(t.recurrence.months, date);
+    }
+    persist();
+    renderAll();
+  }
+
+  // ---------- Templates ----------
+  function plantCardHtml(p){
+    const dueTasks = activeTasks().filter(t=>t.plantId===p.id && dueBucket(t.nextDue)!=="later");
+    const issues = openIssues().filter(i=>i.plantId===p.id);
+    return `<div class="plant-card" data-action="open-plant" data-id="${p.id}">
+      <div class="pc-name">${escapeHtml(p.name)}</div>
+      ${p.species?`<div class="pc-species">${escapeHtml(p.species)}</div>`:""}
+      <div class="pc-meta">
+        <span class="badge type">${escapeHtml(p.type)}</span>
+        <span class="badge zone">${escapeHtml(p.zone)}</span>
+        ${p.status!=="Active"?`<span class="badge status-${p.status}">${p.status}</span>`:""}
+      </div>
+      <div class="pc-flags">
+        ${issues.length?`<div class="flag-issue">⚠ ${issues.length} open issue${issues.length>1?"s":""}</div>`:""}
+        ${dueTasks.length?`<div class="flag-due">◷ ${dueTasks.length} task${dueTasks.length>1?"s":""} due soon</div>`:""}
+      </div>
+    </div>`;
+  }
+  function activityRowHtml(e){
+    const p = getPlantById(e.plantId);
+    return `<div class="log-row" data-id="${e.id}">
+      <div class="log-date">${formatDate(e.date)}</div>
+      <div class="log-main">
+        <div class="log-title">${escapeHtml(e.title)}${p?`<span class="badge zone">${escapeHtml(p.name)}</span>`:e.zone?`<span class="badge zone">${escapeHtml(e.zone)}</span>`:""}</div>
+        <div class="log-meta">${escapeHtml(e.category)}${(e.attachments&&e.attachments.length)?" · "+e.attachments.length+" file"+(e.attachments.length>1?"s":""):""}</div>
+        ${e.notes?`<div class="log-notes">${escapeHtml(e.notes)}</div>`:""}
+        ${(e.attachments&&e.attachments.length)?`<div class="log-attachments">${e.attachments.map(a=>`<button type="button" class="chip" data-action="open-log-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
+      </div>
+      <div class="log-cost">${e.cost!=null?formatCurrency(e.cost):""}</div>
+      <div class="log-actions">
+        ${e.taskId?"":`<button class="icon-btn" data-action="delete-log" data-id="${e.id}" title="Delete">✕</button>`}
+      </div>
+    </div>`;
+  }
+  function scheduleRowHtml(t){
+    const bucket = dueBucket(t.nextDue);
+    const badgeClass = bucket==="overdue" ? "due-overdue" : bucket==="week" ? "due-soon" : "";
+    return `<div class="schedule-row" data-id="${t.id}">
+      <div>
+        <div class="schedule-title">${escapeHtml(t.title)} <span class="badge type">${escapeHtml(t.taskType)}</span></div>
+        <div class="schedule-meta">${escapeHtml(taskSubjectLabel(t))} · ${escapeHtml(recurrenceSummary(t))}${t.notes?" · "+escapeHtml(t.notes):""}</div>
+      </div>
+      <div class="schedule-due">${t.nextDue?formatDate(t.nextDue):"—"}${badgeClass?` <span class="badge ${badgeClass}">${bucket==="overdue"?"Overdue":"Due soon"}</span>`:""}</div>
+      <div class="schedule-meta">${t.lastCompleted?"Last done "+formatDate(t.lastCompleted):"Never done"}</div>
+      <div class="schedule-actions">
+        <button class="btn small" data-action="complete-task" data-id="${t.id}">Mark Done</button>
+        <button class="btn ghost small" data-action="edit-task" data-id="${t.id}">Edit</button>
+        <button class="icon-btn" data-action="delete-task" data-id="${t.id}" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }
+  function issueCardHtml(i){
+    const p = getPlantById(i.plantId);
+    const sevKey = SEV_KEY[i.severity] || "Monitor";
+    const stKey = ISTATUS_KEY[i.status] || "Monitoring";
+    const timeline = [...i.updates].sort((a,b)=> new Date(b.date)-new Date(a.date));
+    return `<div class="issue-card" data-id="${i.id}">
+      <div class="issue-top">
+        <div>
+          <div class="issue-title">${escapeHtml(i.title)} <span class="badge sev-${sevKey}">${escapeHtml(i.severity)}</span> <span class="badge ist-${stKey}">${escapeHtml(i.status)}</span></div>
+          <div class="issue-meta">${p?escapeHtml(p.name)+" · ":""}${escapeHtml(i.category)} · noticed ${formatDate(i.dateNoticed)}${(i.attachments&&i.attachments.length)?" · "+i.attachments.length+" photo"+(i.attachments.length>1?"s":""):""}</div>
+        </div>
+        <button class="icon-btn" data-action="delete-issue" data-id="${i.id}" title="Delete">✕</button>
+      </div>
+      ${(i.attachments&&i.attachments.length)?`<div class="log-attachments">${i.attachments.map(a=>`<button type="button" class="chip" data-action="open-issue-attachment" data-issue="${i.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
+      <div class="timeline">
+        ${timeline.map(u=>`<div class="timeline-item"><div class="t-date">${formatDate(u.date)}</div><div class="t-note">${escapeHtml(u.note)}</div></div>`).join("") || '<div class="timeline-item"><div class="t-note empty">No updates yet.</div></div>'}
+      </div>
+      <div class="issue-actions">
+        <button class="btn small" data-action="add-issue-update" data-id="${i.id}">+ Add update</button>
+        <label class="btn ghost small" style="cursor:pointer;">+ Add photo
+          <input type="file" multiple accept="image/*" style="display:none;" data-action="add-issue-photo" data-id="${i.id}">
+        </label>
+      </div>
+    </div>`;
+  }
+
+  // ---------- Renderers ----------
+  function populatePlantSelect(selectEl, includeGeneral){
+    if(!selectEl) return;
+    const current = selectEl.value;
+    const opts = [...state.plants].filter(p=>p.status==="Active").sort((a,b)=>a.name.localeCompare(b.name))
+      .map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+    selectEl.innerHTML = (includeGeneral ? '<option value="">General / not plant-specific</option>' : '<option value="">— none —</option>') + opts;
+    selectEl.value = current;
+  }
+  function populateSelectOptions(selectEl, values, allLabel){
+    const current = selectEl.value;
+    selectEl.innerHTML = `<option value="">${allLabel}</option>` + values.map(v=>`<option>${v}</option>`).join("");
+    selectEl.value = current;
+  }
+
+  function renderDashboard(){
+    const active = state.plants.filter(p=>p.status==="Active");
+    const tasks = activeTasks();
+    const dueWeek = tasks.filter(t=>["overdue","week"].includes(dueBucket(t.nextDue)));
+    const overdue = tasks.filter(t=>dueBucket(t.nextDue)==="overdue");
+    const oIssues = openIssues();
+
+    qs("#statPlants").textContent = active.length;
+    qs("#statDueWeek").textContent = dueWeek.length;
+    qs("#statOverdue").textContent = overdue.length;
+    qs("#statOpenIssues").textContent = oIssues.length;
+
+    qs("#overdueBanner").innerHTML = overdue.length ? `
+      <div class="warn-banner">
+        <strong>⏰ ${overdue.length} task${overdue.length>1?"s":""} overdue</strong>
+        <ul>${overdue.map(t=>`<li>${escapeHtml(t.title)} — ${escapeHtml(taskSubjectLabel(t))} (was due ${formatDate(t.nextDue)})</li>`).join("")}</ul>
+      </div>` : "";
+
+    const urgent = oIssues.filter(i=>i.severity==="Urgent — At Risk");
+    qs("#urgentIssueBanner").innerHTML = urgent.length ? `
+      <div class="warn-banner">
+        <strong>⚠ ${urgent.length} issue${urgent.length>1?"s":""} flagged At Risk</strong>
+        <ul>${urgent.map(i=>`<li>${escapeHtml(i.title)}${i.plantId?" — "+escapeHtml(plantLabel(i.plantId)):""}</li>`).join("")}</ul>
+      </div>` : "";
+
+    const dueSorted = [...dueWeek].sort((a,b)=> new Date(a.nextDue||"9999-01-01") - new Date(b.nextDue||"9999-01-01"));
+    qs("#dueThisWeek").innerHTML = dueSorted.map(scheduleRowHtml).join("") || '<p class="empty">Nothing due this week.</p>';
+
+    const severityOrder = { "Urgent — At Risk":0, "Needs Attention":1, "Monitor":2 };
+    const issuesSorted = [...oIssues].sort((a,b)=> (severityOrder[a.severity]??3)-(severityOrder[b.severity]??3)).slice(0,5);
+    qs("#dashIssues").innerHTML = issuesSorted.map(issueCardHtml).join("") || '<p class="empty">No open issues.</p>';
+
+    const recent = [...state.activityLog].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,6);
+    qs("#recentActivity").innerHTML = recent.map(activityRowHtml).join("") || '<p class="empty">No activity logged yet.</p>';
+  }
+
+  function getFilteredPlants(){
+    return state.plants.filter(p=>{
+      if(plantFilters.zone && p.zone!==plantFilters.zone) return false;
+      if(plantFilters.type && p.type!==plantFilters.type) return false;
+      if(plantFilters.status && p.status!==plantFilters.status) return false;
+      if(plantFilters.search){
+        const hay = ((p.name||"")+" "+(p.species||"")+" "+(p.notes||"")).toLowerCase();
+        if(!hay.includes(plantFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> a.name.localeCompare(b.name));
+  }
+  function renderPlants(){
+    populateSelectOptions(qs("#filterPZone"), ZONES, "All zones");
+    populateSelectOptions(qs("#filterPType"), PLANT_TYPES, "All types");
+    qs("#plantGrid").innerHTML = getFilteredPlants().map(plantCardHtml).join("") || '<p class="empty">No plants added yet — add your first plant to get started.</p>';
+  }
+
+  function renderRhythm(){
+    const now = new Date();
+    const curMonth = now.getMonth()+1;
+    const byMonth = Array.from({length:12}, ()=>[]);
+    activeTasks().filter(t=>t.recurrence.type==="annual").forEach(t=>{
+      (t.recurrence.months||[]).forEach(m=>{ byMonth[m-1].push(t); });
+    });
+    qs("#rhythmGrid").innerHTML = MONTH_NAMES.map((name,idx)=>{
+      const m = idx+1;
+      const items = byMonth[idx];
+      return `<div class="rhythm-card ${m===curMonth?"current":""}">
+        <h4>${name}</h4>
+        <ul>${items.map(t=>`<li>${escapeHtml(t.title)} <span style="color:var(--ink-soft);">(${escapeHtml(taskSubjectLabel(t))})</span></li>`).join("") || '<li class="empty">—</li>'}</ul>
+      </div>`;
+    }).join("");
+  }
+
+  function getFilteredTasks(){
+    return activeTasks().filter(t=>{
+      if(taskFilters.zone){
+        const z = t.zone || (getPlantById(t.plantId)||{}).zone;
+        if(z!==taskFilters.zone) return false;
+      }
+      if(taskFilters.type && t.taskType!==taskFilters.type) return false;
+      if(taskFilters.search){
+        const hay = ((t.title||"")+" "+taskSubjectLabel(t)+" "+(t.notes||"")).toLowerCase();
+        if(!hay.includes(taskFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    });
+  }
+  function renderSchedule(){
+    renderRhythm();
+    populateSelectOptions(qs("#filterTZone"), ZONES, "All zones");
+    populateSelectOptions(qs("#filterTType"), TASK_TYPES, "All task types");
+    const tasks = getFilteredTasks();
+    const groups = { overdue:[], week:[], month:[], later:[] };
+    tasks.forEach(t=> groups[dueBucket(t.nextDue)].push(t));
+    Object.values(groups).forEach(g=> g.sort((a,b)=> new Date(a.nextDue||"9999-01-01") - new Date(b.nextDue||"9999-01-01")));
+    const labels = { overdue:"Overdue", week:"Due this week", month:"Due this month", later:"Later" };
+    let html = "";
+    ["overdue","week","month","later"].forEach(key=>{
+      if(!groups[key].length) return;
+      html += `<div class="group-heading">${labels[key]}</div>` + groups[key].map(scheduleRowHtml).join("");
+    });
+    qs("#scheduleList").innerHTML = html || '<p class="empty">No care tasks yet — add one to start building your schedule.</p>';
+  }
+
+  function getFilteredLog(){
+    return state.activityLog.filter(e=>{
+      if(logFilters.plantId && e.plantId!==logFilters.plantId) return false;
+      if(logFilters.category && e.category!==logFilters.category) return false;
+      if(logFilters.from && e.date < logFilters.from) return false;
+      if(logFilters.to && e.date > logFilters.to) return false;
+      if(logFilters.search){
+        const hay = ((e.title||"")+" "+(e.notes||"")).toLowerCase();
+        if(!hay.includes(logFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> new Date(b.date)-new Date(a.date));
+  }
+  function renderActivity(){
+    populatePlantSelect(qs("#filterLPlant"), true);
+    populateSelectOptions(qs("#filterLCategory"), LOG_CATEGORIES, "All categories");
+    qs("#activityList").innerHTML = getFilteredLog().map(activityRowHtml).join("") || '<p class="empty">No matching entries.</p>';
+  }
+
+  function getFilteredIssues(){
+    return state.issues.filter(i=>{
+      if(issueFilters.status && i.status!==issueFilters.status) return false;
+      if(issueFilters.severity && i.severity!==issueFilters.severity) return false;
+      if(issueFilters.search){
+        const hay = ((i.title||"")+" "+(i.updates||[]).map(u=>u.note).join(" ")).toLowerCase();
+        if(!hay.includes(issueFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> new Date(b.dateNoticed)-new Date(a.dateNoticed));
+  }
+  function renderIssues(){
+    qs("#issuesList").innerHTML = getFilteredIssues().map(issueCardHtml).join("") || '<p class="empty">No issues logged.</p>';
+  }
+
+  function renderAll(){
+    renderDashboard();
+    renderPlants();
+    renderSchedule();
+    renderActivity();
+    renderIssues();
+  }
+
+  // ---------- Dialogs ----------
+  const plantDialog = qs("#plantDialog");
+  const plantDetailDialog = qs("#plantDetailDialog");
+  const taskDialog = qs("#taskDialog");
+  const completeDialog = qs("#completeDialog");
+  const logDialog = qs("#logDialog");
+  const issueDialog = qs("#issueDialog");
+  const issueUpdateDialog = qs("#issueUpdateDialog");
+  const filesDialog = qs("#filesDialog");
+
+  function openPlantDialog(id){
+    const form = qs("#plantForm");
+    form.reset();
+    if(id){
+      const p = getPlantById(id);
+      form.dataset.editingId = id;
+      qs("#plantDialogTitle").textContent = "Edit Plant";
+      form.name.value = p.name;
+      form.species.value = p.species || "";
+      form.type.value = p.type;
+      form.zone.value = p.zone;
+      form.sun.value = p.sun;
+      form.status.value = p.status;
+      form.plantedDate.value = p.plantedDate || "";
+      form.source.value = p.source || "";
+      form.notes.value = p.notes || "";
+    } else {
+      delete form.dataset.editingId;
+      qs("#plantDialogTitle").textContent = "Add Plant";
+    }
+    plantDialog.showModal();
+  }
+
+  async function openPlantDetail(id){
+    const p = getPlantById(id);
+    if(!p) return;
+    const tasks = activeTasks().filter(t=>t.plantId===id);
+    const issues = state.issues.filter(i=>i.plantId===id);
+    const log = state.activityLog.filter(e=>e.plantId===id).sort((a,b)=> new Date(b.date)-new Date(a.date));
+    let photos = [];
+    try{ photos = await listFiles(storagePathFor(["Plants", p.folderName, "Photos"])); }catch(e){ /* ignore */ }
+    qs("#plantDetailBody").innerHTML = `
+      <h3>${escapeHtml(p.name)}</h3>
+      <div class="pd-meta">
+        ${p.species?escapeHtml(p.species)+" · ":""}${escapeHtml(p.type)} · ${escapeHtml(p.zone)} · ${escapeHtml(p.sun)}
+        ${p.plantedDate?" · planted "+formatDate(p.plantedDate):""}
+        <span class="badge status-${p.status}">${p.status}</span>
+      </div>
+      ${p.notes?`<div class="log-notes">${escapeHtml(p.notes)}</div>`:""}
+      <div style="margin-top:10px; display:flex; gap:6px;">
+        <button class="btn small" data-action="edit-plant" data-id="${p.id}">Edit</button>
+        <label class="btn small" style="cursor:pointer;">+ Add photo
+          <input type="file" multiple accept="image/*" style="display:none;" data-action="add-plant-photo" data-id="${p.id}">
+        </label>
+        <button class="btn ghost small" data-action="delete-plant" data-id="${p.id}">Delete</button>
+      </div>
+      <div class="pd-section">
+        <h4>Photos (${photos.length})</h4>
+        <div class="file-chip-list">${photos.map(f=>`<a class="chip" style="text-decoration:none;" href="${escapeAttr(f.url)}" target="_blank" rel="noopener">${escapeHtml(f.originalName)}</a>`).join("") || '<span class="empty">None yet</span>'}</div>
+      </div>
+      <div class="pd-section">
+        <h4>Care tasks (${tasks.length})</h4>
+        ${tasks.map(t=>`<div class="schedule-row" data-id="${t.id}">
+          <div><div class="schedule-title">${escapeHtml(t.title)}</div><div class="schedule-meta">${escapeHtml(recurrenceSummary(t))}</div></div>
+          <div class="schedule-due">${t.nextDue?formatDate(t.nextDue):"—"}</div>
+          <div class="schedule-meta">${t.lastCompleted?"Last "+formatDate(t.lastCompleted):"Never"}</div>
+          <div class="schedule-actions"><button class="btn small" data-action="complete-task" data-id="${t.id}">Mark Done</button></div>
+        </div>`).join("") || '<p class="empty">No care tasks for this plant yet.</p>'}
+      </div>
+      <div class="pd-section">
+        <h4>Issues (${issues.length})</h4>
+        ${issues.map(issueCardHtml).join("") || '<p class="empty">No issues logged for this plant.</p>'}
+      </div>
+      <div class="pd-section">
+        <h4>Activity history (${log.length})</h4>
+        ${log.map(activityRowHtml).join("") || '<p class="empty">No activity logged for this plant yet.</p>'}
+      </div>
+    `;
+    plantDetailDialog.showModal();
+  }
+
+  function setRecurUI(type){
+    qs("#recurOnceFields").classList.toggle("active", type==="once");
+    qs("#recurIntervalFields").classList.toggle("active", type==="interval");
+    qs("#recurAnnualFields").classList.toggle("active", type==="annual");
+  }
+  function openTaskDialog(id){
+    const form = qs("#taskForm");
+    form.reset();
+    populatePlantSelect(form.plantId, true);
+    if(id){
+      const t = getTaskById(id);
+      form.dataset.editingId = id;
+      qs("#taskDialogTitle").textContent = "Edit Care Task";
+      form.title.value = t.title;
+      form.taskType.value = t.taskType;
+      form.plantId.value = t.plantId || "";
+      form.zone.value = t.zone || "";
+      form.notes.value = t.notes || "";
+      form.recurType.value = t.recurrence.type;
+      setRecurUI(t.recurrence.type);
+      if(t.recurrence.type==="once") form.onceDate.value = t.nextDue || "";
+      if(t.recurrence.type==="interval"){ form.intervalDays.value = t.recurrence.intervalDays || ""; form.intervalNextDue.value = t.nextDue || ""; }
+      if(t.recurrence.type==="annual"){
+        qsa('input[name="months"]', form).forEach(cb=> cb.checked = (t.recurrence.months||[]).includes(Number(cb.value)));
+        form.annualNextDue.value = t.nextDue || "";
+      }
+    } else {
+      delete form.dataset.editingId;
+      qs("#taskDialogTitle").textContent = "Add Care Task";
+      setRecurUI("once");
+      form.onceDate.value = todayStr();
+    }
+    taskDialog.showModal();
+  }
+
+  function openCompleteDialog(id){
+    const form = qs("#completeForm");
+    form.reset();
+    form.dataset.taskId = id;
+    form.date.value = todayStr();
+    completeDialog.showModal();
+  }
+
+  function openLogDialog(id, presetPlantId){
+    const form = qs("#logForm");
+    form.reset();
+    populatePlantSelect(form.plantId, true);
+    if(id){
+      const e = state.activityLog.find(x=>x.id===id);
+      form.dataset.editingId = id;
+      qs("#logDialogTitle").textContent = "Edit Activity";
+      form.date.value = e.date;
+      form.plantId.value = e.plantId || "";
+      form.title.value = e.title;
+      form.category.value = e.category;
+      form.cost.value = e.cost ?? "";
+      form.notes.value = e.notes || "";
+      qs("#existingLogAttachments").innerHTML = (e.attachments||[]).map(a=>`
+        <span class="chip removable">
+          <button type="button" style="all:unset;cursor:pointer;" data-action="open-log-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>
+          <button type="button" class="chip-remove" data-action="remove-log-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">✕</button>
+        </span>`).join("");
+    } else {
+      delete form.dataset.editingId;
+      qs("#logDialogTitle").textContent = "Log Activity";
+      form.date.value = todayStr();
+      if(presetPlantId) form.plantId.value = presetPlantId;
+      qs("#existingLogAttachments").innerHTML = "";
+    }
+    logDialog.showModal();
+  }
+
+  function openIssueDialog(id, presetPlantId){
+    const form = qs("#issueForm");
+    form.reset();
+    populatePlantSelect(form.plantId, true);
+    if(id){
+      const i = getIssueById(id);
+      form.dataset.editingId = id;
+      qs("#issueDialogTitle").textContent = "Edit Issue";
+      qs("#initialNoteLabel").style.display = "none";
+      form.dateNoticed.value = i.dateNoticed;
+      form.title.value = i.title;
+      form.plantId.value = i.plantId || "";
+      form.category.value = i.category;
+      form.severity.value = i.severity;
+      form.status.value = i.status;
+      qs("#existingIssueAttachments").innerHTML = (i.attachments||[]).map(a=>`
+        <span class="chip removable">
+          <button type="button" style="all:unset;cursor:pointer;" data-action="open-issue-attachment" data-issue="${i.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>
+          <button type="button" class="chip-remove" data-action="remove-issue-attachment" data-issue="${i.id}" data-name="${escapeAttr(a.name)}">✕</button>
+        </span>`).join("");
+    } else {
+      delete form.dataset.editingId;
+      qs("#issueDialogTitle").textContent = "Log Issue";
+      qs("#initialNoteLabel").style.display = "";
+      form.dateNoticed.value = todayStr();
+      form.status.value = "Monitoring";
+      if(presetPlantId) form.plantId.value = presetPlantId;
+      qs("#existingIssueAttachments").innerHTML = "";
+    }
+    issueDialog.showModal();
+  }
+
+  function openIssueUpdateDialog(id){
+    const form = qs("#issueUpdateForm");
+    form.reset();
+    form.dataset.issueId = id;
+    const i = getIssueById(id);
+    form.date.value = todayStr();
+    form.status.value = i.status;
+    issueUpdateDialog.showModal();
+  }
+
+  // ---------- Form handlers ----------
+  async function handlePlantSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    let plant = editingId ? getPlantById(editingId) : null;
+    const isNew = !plant;
+    if(isNew) plant = { id:uid(), createdAt:Date.now() };
+
+    plant.name = (fd.get("name")||"").trim();
+    plant.species = (fd.get("species")||"").trim();
+    plant.type = fd.get("type");
+    plant.zone = fd.get("zone");
+    plant.sun = fd.get("sun");
+    plant.status = fd.get("status");
+    plant.plantedDate = fd.get("plantedDate") || null;
+    plant.source = (fd.get("source")||"").trim();
+    plant.notes = (fd.get("notes")||"").trim();
+    if(isNew) plant.folderName = sanitizeFolderName(plant.name);
+
+    if(isNew) state.plants.push(plant);
+    persist();
+    plantDialog.close();
+    renderAll();
+  }
+
+  function handleTaskSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    let task = editingId ? getTaskById(editingId) : null;
+    const isNew = !task;
+    if(isNew) task = { id:uid(), createdAt:Date.now(), active:true, lastCompleted:null };
+
+    task.title = (fd.get("title")||"").trim();
+    task.taskType = fd.get("taskType");
+    task.plantId = fd.get("plantId") || null;
+    task.zone = task.plantId ? null : (fd.get("zone") || null);
+    task.notes = (fd.get("notes")||"").trim();
+    task.active = true;
+
+    const recurType = fd.get("recurType");
+    if(recurType==="once"){
+      task.recurrence = { type:"once" };
+      task.nextDue = fd.get("onceDate") || null;
+    } else if(recurType==="interval"){
+      const days = Number(fd.get("intervalDays")) || 1;
+      task.recurrence = { type:"interval", intervalDays: days };
+      task.nextDue = fd.get("intervalNextDue") || todayStr();
+    } else {
+      const months = qsa('input[name="months"]', form).filter(cb=>cb.checked).map(cb=>Number(cb.value));
+      task.recurrence = { type:"annual", months };
+      task.nextDue = fd.get("annualNextDue") || computeNextAnnualDue(months, todayStr());
+    }
+
+    if(isNew) state.tasks.push(task);
+    persist();
+    taskDialog.close();
+    renderAll();
+  }
+
+  function handleCompleteSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const taskId = form.dataset.taskId;
+    completeTask(taskId, fd.get("date"), fd.get("notes"), fd.get("cost") ? Number(fd.get("cost")) : null);
+    completeDialog.close();
+  }
+
+  async function handleLogSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    const entry = editingId ? state.activityLog.find(x=>x.id===editingId) : { id:uid(), attachments:[], createdAt:Date.now() };
+    entry.date = fd.get("date");
+    entry.plantId = fd.get("plantId") || null;
+    entry.title = (fd.get("title")||"").trim();
+    entry.category = fd.get("category");
+    entry.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
+    entry.notes = (fd.get("notes")||"").trim();
+    if(!entry.attachments) entry.attachments = [];
+
+    const files = form.attachments.files;
+    if(files && files.length){
+      const pathArr = attachmentPathForLog(entry);
+      for(const file of files){
+        entry.attachments.push(await uploadAttachment(pathArr, file));
+      }
+    }
+
+    if(!editingId) state.activityLog.push(entry);
+    persist();
+    logDialog.close();
+    renderAll();
+  }
+
+  async function handleIssueSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    let issue = editingId ? getIssueById(editingId) : null;
+    const isNew = !issue;
+    if(isNew) issue = { id:uid(), attachments:[], updates:[], createdAt:Date.now() };
+
+    issue.dateNoticed = fd.get("dateNoticed");
+    issue.title = (fd.get("title")||"").trim();
+    issue.plantId = fd.get("plantId") || null;
+    issue.category = fd.get("category");
+    issue.severity = fd.get("severity");
+    issue.status = fd.get("status");
+    if(!issue.attachments) issue.attachments = [];
+    if(!issue.updates) issue.updates = [];
+    if(isNew) issue.folderName = sanitizeFolderName(issue.title);
+
+    if(isNew){
+      const notes = (fd.get("notes")||"").trim();
+      issue.updates.push({ id:uid(), date: issue.dateNoticed, note: notes || "Issue logged.", createdAt:Date.now() });
+    }
+
+    const files = form.attachments.files;
+    if(files && files.length){
+      const pathArr = attachmentPathForIssue(issue);
+      for(const file of files){
+        issue.attachments.push(await uploadAttachment(pathArr, file));
+      }
+    }
+
+    if(isNew) state.issues.push(issue);
+    persist();
+    issueDialog.close();
+    renderAll();
+  }
+
+  function handleIssueUpdateSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const issue = getIssueById(form.dataset.issueId);
+    if(!issue) return;
+    issue.updates.push({ id:uid(), date: fd.get("date"), note: (fd.get("note")||"").trim(), createdAt:Date.now() });
+    issue.status = fd.get("status");
+    persist();
+    issueUpdateDialog.close();
+    renderAll();
+  }
+
+  async function deletePlant(id){
+    const hasLinks = state.tasks.some(t=>t.plantId===id) || state.issues.some(i=>i.plantId===id) || state.activityLog.some(e=>e.plantId===id);
+    const msg = hasLinks
+      ? "This plant has linked tasks, issues, or activity. Delete anyway? Linked records will be kept but unlinked."
+      : "Delete this plant? Its photos in cloud storage will NOT be deleted.";
+    if(!confirm(msg)) return;
+    state.plants = state.plants.filter(x=>x.id!==id);
+    state.tasks.forEach(t=>{ if(t.plantId===id) t.plantId = null; });
+    state.issues.forEach(i=>{ if(i.plantId===id) i.plantId = null; });
+    state.activityLog.forEach(e=>{ if(e.plantId===id) e.plantId = null; });
+    persist();
+    plantDetailDialog.close();
+    renderAll();
+  }
+  function deleteTask(id){
+    if(!confirm("Delete this care task? Past completions stay in the Activity Log.")) return;
+    state.tasks = state.tasks.filter(x=>x.id!==id);
+    persist(); renderAll();
+  }
+  function deleteLog(id){
+    if(!confirm("Delete this activity entry? This does not delete any files already saved to cloud storage.")) return;
+    state.activityLog = state.activityLog.filter(x=>x.id!==id);
+    persist(); renderAll();
+  }
+  function deleteIssue(id){
+    if(!confirm("Delete this issue and its full timeline? This does not delete any photos already saved to cloud storage.")) return;
+    state.issues = state.issues.filter(x=>x.id!==id);
+    persist(); renderAll();
+  }
+  async function removeLogAttachment(entryId, name){
+    const entry = state.activityLog.find(x=>x.id===entryId);
+    if(!entry) return;
+    if(!confirm("Remove this attachment? The saved file will also be deleted from cloud storage.")) return;
+    await deleteFile(storagePathFor([...attachmentPathForLog(entry), name]));
+    entry.attachments = entry.attachments.filter(a=>a.name!==name);
+    persist();
+    openLogDialog(entryId);
+    renderAll();
+  }
+  async function removeIssueAttachment(issueId, name){
+    const issue = getIssueById(issueId);
+    if(!issue) return;
+    if(!confirm("Remove this photo? The saved file will also be deleted from cloud storage.")) return;
+    await deleteFile(storagePathFor([...attachmentPathForIssue(issue), name]));
+    issue.attachments = issue.attachments.filter(a=>a.name!==name);
+    persist();
+    openIssueDialog(issueId);
+    renderAll();
+  }
+  async function addIssuePhotos(issueId, files){
+    const issue = getIssueById(issueId);
+    if(!issue || !files.length) return;
+    const pathArr = attachmentPathForIssue(issue);
+    for(const file of files){
+      issue.attachments.push(await uploadAttachment(pathArr, file));
+    }
+    persist();
+    renderAll();
+  }
+  async function addPlantPhotos(plantId, files){
+    const p = getPlantById(plantId);
+    if(!p || !files.length) return;
+    for(const file of files){
+      await uploadAttachment(["Plants", p.folderName, "Photos"], file);
+    }
+    openPlantDetail(plantId);
+  }
+
+  // ---------- Event wiring ----------
+  qsa(".tab-btn").forEach(btn=> btn.addEventListener("click", ()=>{
+    qsa(".tab-btn").forEach(b=>b.classList.remove("active"));
+    qsa(".tab-panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    qs("#"+btn.dataset.tab).classList.add("active");
+  }));
+
+  qs("#recurTypeSelect").addEventListener("change", e=> setRecurUI(e.target.value));
+
+  document.body.addEventListener("click", async (ev)=>{
+    const btn = ev.target.closest("[data-action]");
+    if(!btn) return;
+    const action = btn.dataset.action;
+    if(action==="add-plant") openPlantDialog(null);
+    else if(action==="edit-plant") openPlantDialog(btn.dataset.id);
+    else if(action==="delete-plant") deletePlant(btn.dataset.id);
+    else if(action==="open-plant") openPlantDetail(btn.dataset.id);
+    else if(action==="add-task") openTaskDialog(null);
+    else if(action==="edit-task") openTaskDialog(btn.dataset.id);
+    else if(action==="delete-task") deleteTask(btn.dataset.id);
+    else if(action==="complete-task") openCompleteDialog(btn.dataset.id);
+    else if(action==="add-log") openLogDialog(null);
+    else if(action==="delete-log") deleteLog(btn.dataset.id);
+    else if(action==="open-log-attachment"){
+      const entry = state.activityLog.find(x=>x.id===btn.dataset.entry);
+      const a = entry && entry.attachments.find(x=>x.name===btn.dataset.name);
+      if(a) window.open(a.url, "_blank");
+    }
+    else if(action==="remove-log-attachment") removeLogAttachment(btn.dataset.entry, btn.dataset.name);
+    else if(action==="add-issue") openIssueDialog(null);
+    else if(action==="delete-issue") deleteIssue(btn.dataset.id);
+    else if(action==="add-issue-update") openIssueUpdateDialog(btn.dataset.id);
+    else if(action==="open-issue-attachment"){
+      const issue = getIssueById(btn.dataset.issue);
+      const a = issue && issue.attachments.find(x=>x.name===btn.dataset.name);
+      if(a) window.open(a.url, "_blank");
+    }
+    else if(action==="remove-issue-attachment") removeIssueAttachment(btn.dataset.issue, btn.dataset.name);
+  });
+
+  document.body.addEventListener("change", (ev)=>{
+    const input = ev.target.closest('[data-action="add-issue-photo"]');
+    if(input){ addIssuePhotos(input.dataset.id, Array.from(input.files)); input.value=""; return; }
+    const pinput = ev.target.closest('[data-action="add-plant-photo"]');
+    if(pinput){ addPlantPhotos(pinput.dataset.id, Array.from(pinput.files)); pinput.value=""; return; }
+  });
+
+  qs("#plantForm").addEventListener("submit", handlePlantSubmit);
+  qs("#taskForm").addEventListener("submit", handleTaskSubmit);
+  qs("#completeForm").addEventListener("submit", handleCompleteSubmit);
+  qs("#logForm").addEventListener("submit", handleLogSubmit);
+  qs("#issueForm").addEventListener("submit", handleIssueSubmit);
+  qs("#issueUpdateForm").addEventListener("submit", handleIssueUpdateSubmit);
+  qs("#plantCancel").addEventListener("click", ()=> plantDialog.close());
+  qs("#taskCancel").addEventListener("click", ()=> taskDialog.close());
+  qs("#completeCancel").addEventListener("click", ()=> completeDialog.close());
+  qs("#logCancel").addEventListener("click", ()=> logDialog.close());
+  qs("#issueCancel").addEventListener("click", ()=> issueDialog.close());
+  qs("#issueUpdateCancel").addEventListener("click", ()=> issueUpdateDialog.close());
+  qs("#plantDetailClose").addEventListener("click", ()=> plantDetailDialog.close());
+  qs("#filesDialogClose").addEventListener("click", ()=> filesDialog.close());
+
+  qs("#filterPSearch").addEventListener("input", e=>{ plantFilters.search = e.target.value; renderPlants(); });
+  qs("#filterPZone").addEventListener("change", e=>{ plantFilters.zone = e.target.value; renderPlants(); });
+  qs("#filterPType").addEventListener("change", e=>{ plantFilters.type = e.target.value; renderPlants(); });
+  qs("#filterPStatus").addEventListener("change", e=>{ plantFilters.status = e.target.value; renderPlants(); });
+  qs("#filterPClear").addEventListener("click", ()=>{ plantFilters = {search:"",zone:"",type:"",status:""}; qs("#plantFilterForm").reset(); renderPlants(); });
+
+  qs("#filterTSearch").addEventListener("input", e=>{ taskFilters.search = e.target.value; renderSchedule(); });
+  qs("#filterTZone").addEventListener("change", e=>{ taskFilters.zone = e.target.value; renderSchedule(); });
+  qs("#filterTType").addEventListener("change", e=>{ taskFilters.type = e.target.value; renderSchedule(); });
+  qs("#filterTClear").addEventListener("click", ()=>{ taskFilters = {search:"",zone:"",type:""}; qs("#taskFilterForm").reset(); renderSchedule(); });
+
+  qs("#filterLSearch").addEventListener("input", e=>{ logFilters.search = e.target.value; renderActivity(); });
+  qs("#filterLPlant").addEventListener("change", e=>{ logFilters.plantId = e.target.value; renderActivity(); });
+  qs("#filterLCategory").addEventListener("change", e=>{ logFilters.category = e.target.value; renderActivity(); });
+  qs("#filterLFrom").addEventListener("change", e=>{ logFilters.from = e.target.value; renderActivity(); });
+  qs("#filterLTo").addEventListener("change", e=>{ logFilters.to = e.target.value; renderActivity(); });
+  qs("#filterLClear").addEventListener("click", ()=>{ logFilters = {search:"",plantId:"",category:"",from:"",to:""}; qs("#logFilterForm").reset(); renderActivity(); });
+
+  qs("#filterISearch").addEventListener("input", e=>{ issueFilters.search = e.target.value; renderIssues(); });
+  qs("#filterIStatus").addEventListener("change", e=>{ issueFilters.status = e.target.value; renderIssues(); });
+  qs("#filterISeverity").addEventListener("change", e=>{ issueFilters.severity = e.target.value; renderIssues(); });
+  qs("#filterIClear").addEventListener("click", ()=>{ issueFilters = {search:"",status:"",severity:""}; qs("#issueFilterForm").reset(); renderIssues(); });
+
+  qs("#loginBtn").addEventListener("click", handleLogin);
+  qs("#loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") handleLogin(); });
+  qs("#logoutBtn").addEventListener("click", ()=> logout());
+
+  qs("#exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `yard-tracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  qs("#importInput").addEventListener("change", async (ev)=>{
+    const file = ev.target.files[0]; if(!file) return;
+    if(!confirm("Import will replace all current data in this tracker. Continue?")){ ev.target.value=""; return; }
+    try{
+      const text = await file.text();
+      state = normalizeState(JSON.parse(text));
+      persist();
+      renderAll();
+      alert("Import complete.");
+    }catch(e){ alert("Could not read that file: "+e.message); }
+    ev.target.value = "";
+  });
+
+  // ---------- Init ----------
+  function init(){
+    const cached = localStorage.getItem("yardTrackerData");
+    if(cached){ try{ state = normalizeState(JSON.parse(cached)); }catch(e){ state = emptyState(); } }
+    else { state = emptyState(); }
+    renderAll();
+    onAuth(user=>{ if(user) showSignedIn(user); else showSignedOut(); });
+  }
+  init();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>House Tracker</title>
+<style>
+  :root{
+    --bg:#f6f4ee;
+    --surface:#ffffff;
+    --ink:#2b2b26;
+    --ink-soft:#6d6a5f;
+    --line:#e3ddcd;
+    --accent:#5b7065;
+    --accent-soft:#dfe6df;
+    --blue-gray:#6d8298;
+    --blue-gray-soft:#e2e8ec;
+    --warn:#a8583e;
+    --warn-soft:#f1ded5;
+    --radius:10px;
+    --shadow:0 1px 2px rgba(30,28,20,0.06), 0 4px 16px rgba(30,28,20,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1c1b17;
+      --surface:#242320;
+      --ink:#eee9dd;
+      --ink-soft:#a8a294;
+      --line:#3a382f;
+      --accent:#8fae9d;
+      --accent-soft:#2c3630;
+      --blue-gray:#8fa8bd;
+      --blue-gray-soft:#28323a;
+      --warn:#d18567;
+      --warn-soft:#3a2620;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    line-height:1.45;
+  }
+  h1,h2,h3,h4{ font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:600; margin:0 0 4px; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
+
+  header.top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  header.top h1{ font-size:26px; }
+  header.top .sub{ color:var(--ink-soft); font-size:14px; }
+  .conn-panel{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; font-size:13px; color:var(--ink-soft); }
+  .conn-row{ display:flex; gap:8px; align-items:center; }
+
+  .btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.ghost{ background:transparent; }
+  .btn:disabled{ opacity:0.45; cursor:not-allowed; }
+  .btn.small{ padding:4px 10px; font-size:12px; }
+
+  nav.tabs{ display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:22px; }
+  .tab-btn{ background:none; border:none; padding:10px 14px; font-size:14px; color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab-btn.active{ color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .grid{ display:grid; gap:16px; }
+  .grid.stats{ grid-template-columns:repeat(4,1fr); margin-bottom:18px; }
+  @media (max-width:760px){ .grid.stats{ grid-template-columns:repeat(2,1fr); } }
+  .stat-tile{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); }
+  .stat-tile .label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; }
+  .stat-tile .value{ font-family:Georgia,serif; font-size:24px; margin-top:4px; }
+
+  .section-title{ display:flex; justify-content:space-between; align-items:center; margin:26px 0 10px; }
+  .section-title h2{ font-size:17px; }
+
+  .bar-row{ display:grid; grid-template-columns:180px 1fr 90px; align-items:center; gap:10px; margin:8px 0; font-size:13px; }
+  .bar-track{ background:var(--accent-soft); border-radius:6px; height:10px; overflow:hidden; }
+  .bar-fill{ background:var(--accent); height:100%; }
+  .bar-value{ text-align:right; color:var(--ink-soft); }
+
+  .empty{ color:var(--ink-soft); font-size:13px; font-style:italic; }
+
+  .log-row{ display:grid; grid-template-columns:90px 1fr 90px 64px; gap:12px; padding:12px 0; border-bottom:1px solid var(--line); align-items:start; }
+  .log-row:last-child{ border-bottom:none; }
+  .log-date{ font-size:12px; color:var(--ink-soft); padding-top:2px; }
+  .log-title{ font-weight:600; font-size:14px; }
+  .log-meta{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .log-notes{ font-size:13px; margin-top:6px; white-space:pre-wrap; }
+  .log-attachments{ margin-top:6px; display:flex; flex-wrap:wrap; gap:6px; }
+  .log-cost{ font-size:13px; text-align:right; padding-top:2px; }
+  .log-actions{ display:flex; gap:4px; justify-content:flex-end; }
+  .icon-btn{ border:none; background:none; cursor:pointer; color:var(--ink-soft); font-size:14px; padding:2px 4px; }
+  .icon-btn:hover{ color:var(--warn); }
+
+  .chip{ display:inline-flex; align-items:center; gap:6px; background:var(--blue-gray-soft); color:var(--ink); border:none; border-radius:14px; padding:4px 10px; font-size:12px; cursor:pointer; }
+  .chip.removable{ padding:2px 4px 2px 10px; }
+  .chip-remove{ border:none; background:none; cursor:pointer; color:var(--warn); font-size:12px; padding:2px 6px; }
+  .badge{ display:inline-block; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600; margin-left:6px; }
+  .badge.proj{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.status-Idea{ background:var(--line); color:var(--ink-soft); }
+  .badge.status-Planned{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.status-In.Progress, .badge[data-status="In Progress"]{ background:var(--accent-soft); color:var(--accent); }
+  .badge.status-On.Hold, .badge[data-status="On Hold"]{ background:var(--warn-soft); color:var(--warn); }
+  .badge.status-Complete{ background:var(--ink); color:var(--bg); }
+  .badge.priority-High{ background:var(--warn-soft); color:var(--warn); }
+  .badge.priority-Medium{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.priority-Low{ background:var(--line); color:var(--ink-soft); }
+  .badge.severity-Urgent{ background:var(--warn); color:#fff; font-weight:700; }
+  .badge.severity-Needs{ background:var(--warn-soft); color:var(--warn); }
+  .badge.severity-Minor{ background:var(--line); color:var(--ink-soft); }
+  .badge.mstatus-Open{ background:var(--warn-soft); color:var(--warn); }
+  .badge.mstatus-InProgress{ background:var(--accent-soft); color:var(--accent); }
+  .badge.mstatus-Resolved{ background:var(--ink); color:var(--bg); }
+
+  .warn-banner{ background:var(--warn-soft); border:1px solid var(--warn); border-radius:var(--radius); padding:12px 16px; margin-bottom:18px; font-size:13px; color:var(--warn); }
+  .warn-banner strong{ display:block; margin-bottom:4px; font-size:14px; }
+  .warn-banner ul{ margin:4px 0 0; padding-left:18px; }
+
+  .filter-bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .filter-bar input, .filter-bar select{ padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); font-size:13px; }
+  .filter-bar input[type="text"]{ min-width:180px; }
+
+  .status-columns{ display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; align-items:start; }
+  .status-col h3{ font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); margin-bottom:8px; }
+  .status-col-list{ display:flex; flex-direction:column; gap:10px; min-height:64px; padding:6px; border-radius:10px; border:1px dashed transparent; transition:background .15s, border-color .15s; }
+  .status-col-list.drag-over{ background:var(--accent-soft); border-color:var(--accent); }
+
+  .project-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:12px 14px; box-shadow:var(--shadow); }
+  .project-card[draggable="true"]{ cursor:grab; }
+  .project-card.dragging{ opacity:0.4; }
+  .project-card .pc-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .project-card .pc-name{ font-weight:600; font-size:14px; }
+  .project-card .pc-cat{ font-size:12px; color:var(--ink-soft); margin-top:2px; }
+  .project-card .pc-est{ font-size:12px; color:var(--ink-soft); margin-top:6px; }
+  .project-card .pc-notes{ font-size:13px; margin-top:6px; color:var(--ink); }
+  .project-card .pc-actions{ display:flex; flex-wrap:wrap; gap:6px; margin-top:10px; align-items:center; }
+  .status-select{ font-size:12px; padding:4px 6px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); }
+
+  table.proj-table{ width:100%; border-collapse:collapse; font-size:13px; }
+  table.proj-table th{ text-align:left; font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-soft); border-bottom:1px solid var(--line); padding:6px 8px; }
+  table.proj-table td{ border-bottom:1px solid var(--line); padding:9px 8px; vertical-align:top; }
+  table.proj-table tr:last-child td{ border-bottom:none; }
+
+  dialog{ border:none; padding:0; border-radius:var(--radius); width:min(560px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+  dialog::backdrop{ background:rgba(20,20,15,0.45); }
+  dialog form{ padding:20px 22px 18px; display:flex; flex-direction:column; gap:12px; }
+  dialog label{ font-size:13px; display:flex; flex-direction:column; gap:4px; color:var(--ink-soft); }
+  dialog input, dialog select, dialog textarea{ font-family:inherit; font-size:14px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+  dialog textarea{ min-height:70px; resize:vertical; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .dialog-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+
+  #filesDialogBody h4{ font-size:13px; margin:14px 0 6px; }
+  #filesDialogBody .file-chip-list{ display:flex; flex-wrap:wrap; gap:6px; }
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:14px; }
+
+  footer.foot{ margin-top:40px; font-size:12px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <h1>House Tracker</h1>
+      <div class="sub">Rowayton / Norwalk, CT</div>
+    </div>
+    <div class="conn-panel">
+      <div class="conn-row" id="signedOutRow">
+        <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" style="width:150px;">
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" style="width:120px;">
+        <button class="btn small" id="loginBtn">Sign in</button>
+      </div>
+      <div class="conn-row" id="signedInRow" style="display:none;">
+        <span id="connStatus">Not signed in</span>
+        <button class="btn ghost small" id="logoutBtn">Sign out</button>
+      </div>
+      <div class="conn-row">
+        <button class="btn ghost small" id="exportBtn">Export backup (.json)</button>
+        <label class="btn ghost small" style="cursor:pointer;">Import
+          <input type="file" id="importInput" accept="application/json" style="display:none;">
+        </label>
+      </div>
+    </div>
+  </header>
+  <p class="hint" id="loginError" style="color:var(--warn); display:none;"></p>
+
+  <nav class="tabs">
+    <button class="tab-btn active" data-tab="tab-dashboard">Dashboard</button>
+    <button class="tab-btn" data-tab="tab-log">Work Log</button>
+    <button class="tab-btn" data-tab="tab-planning">Planning</button>
+    <button class="tab-btn" data-tab="tab-projects">Projects</button>
+    <button class="tab-btn" data-tab="tab-maintenance">Maintenance</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <section id="tab-dashboard" class="tab-panel active">
+    <div class="grid stats">
+      <div class="stat-tile"><div class="label">Total spent</div><div class="value" id="statTotalSpent">$0</div></div>
+      <div class="stat-tile"><div class="label">Spent this year</div><div class="value" id="statYearSpent">$0</div></div>
+      <div class="stat-tile"><div class="label">Open projects</div><div class="value" id="statOpenProjects">0</div></div>
+      <div class="stat-tile"><div class="label">Completed projects</div><div class="value" id="statCompleteProjects">0</div></div>
+    </div>
+
+    <div id="maintenanceBanner"></div>
+
+    <div class="section-title"><h2>Spend by category</h2></div>
+    <div class="card" id="categoryBreakdown"></div>
+
+    <div class="section-title"><h2>Recent activity</h2><button class="btn small" data-action="add-entry">+ Add entry</button></div>
+    <div class="card" id="recentEntries"></div>
+
+    <div class="section-title"><h2>Top of the planning list</h2><button class="btn small" data-action="add-project">+ Add project idea</button></div>
+    <div class="grid" id="topPlanning" style="grid-template-columns:repeat(2,1fr);"></div>
+
+    <div class="section-title"><h2>Open Maintenance Issues</h2><button class="btn small" data-action="add-issue">+ Report issue</button></div>
+    <div class="card" id="openIssuesList"></div>
+  </section>
+
+  <!-- WORK LOG -->
+  <section id="tab-log" class="tab-panel">
+    <div class="section-title"><h2>Work Log</h2><button class="btn primary" data-action="add-entry">+ Add entry</button></div>
+    <form id="logFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterSearch" placeholder="Search title, notes, vendor…">
+      <select id="filterProject"><option value="">All projects</option></select>
+      <select id="filterCategory"><option value="">All categories</option></select>
+      <input type="date" id="filterFrom" title="From date">
+      <input type="date" id="filterTo" title="To date">
+      <button type="button" class="btn ghost small" id="filterClear">Clear</button>
+    </form>
+    <div class="card" id="logList"></div>
+  </section>
+
+  <!-- PLANNING -->
+  <section id="tab-planning" class="tab-panel">
+    <div class="section-title"><h2>Planning</h2><button class="btn primary" data-action="add-project">+ Add project idea</button></div>
+    <p class="hint" style="margin-top:-4px;">Drag a tile to a new column to change its status — or use the dropdown on the tile.</p>
+    <div class="status-columns">
+      <div class="status-col"><h3>Idea</h3><div class="status-col-list" id="col-Idea" data-status="Idea"></div></div>
+      <div class="status-col"><h3>Planned</h3><div class="status-col-list" id="col-Planned" data-status="Planned"></div></div>
+      <div class="status-col"><h3>In Progress</h3><div class="status-col-list" id="col-InProgress" data-status="In Progress"></div></div>
+      <div class="status-col"><h3>On Hold</h3><div class="status-col-list" id="col-OnHold" data-status="On Hold"></div></div>
+      <div class="status-col"><h3>Complete</h3><div class="status-col-list" id="col-Complete" data-status="Complete"></div></div>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section id="tab-projects" class="tab-panel">
+    <div class="section-title"><h2>All Projects</h2><button class="btn primary" data-action="add-project">+ Add project</button></div>
+    <div class="card">
+      <table class="proj-table">
+        <thead><tr><th>Name</th><th>Category</th><th>Status</th><th>Estimate</th><th>Spent</th><th>Entries</th><th></th></tr></thead>
+        <tbody id="projectsTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- MAINTENANCE -->
+  <section id="tab-maintenance" class="tab-panel">
+    <div class="section-title"><h2>Maintenance</h2><button class="btn primary" data-action="add-issue">+ Report issue</button></div>
+    <form id="maintenanceFilterForm" class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterMSearch" placeholder="Search title, notes…">
+      <select id="filterMCategory"><option value="">All categories</option></select>
+      <select id="filterMStatus">
+        <option value="">All statuses</option>
+        <option>Open</option>
+        <option>In Progress</option>
+        <option>Resolved</option>
+      </select>
+      <select id="filterMSeverity">
+        <option value="">All severities</option>
+        <option>Urgent — Do Not Use</option>
+        <option>Needs Attention</option>
+        <option>Minor / Monitor</option>
+      </select>
+      <button type="button" class="btn ghost small" id="filterMClear">Clear</button>
+    </form>
+    <div class="card" id="maintenanceList"></div>
+  </section>
+
+  <footer class="foot">
+    Data syncs live to the cloud while you're signed in. Receipts and photos are stored per project/issue.
+    Use Export regularly as a local backup regardless of sync status.
+  </footer>
+</div>
+
+<!-- ENTRY DIALOG -->
+<dialog id="entryDialog">
+  <form id="entryForm">
+    <h3 id="entryDialogTitle">Add Log Entry</h3>
+    <label>Date <input type="date" name="date" required></label>
+    <label>Project <select name="projectId"></select></label>
+    <label>Title <input type="text" name="title" required placeholder="e.g. Fence stain, HVAC service, gutter repair"></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Exterior</option>
+          <option>Interior</option>
+          <option>Kitchen & Bath</option>
+          <option>Landscape / Yard</option>
+          <option>Systems (HVAC/Electrical/Plumbing)</option>
+          <option>Structural</option>
+          <option>Maintenance</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Cost <input type="number" name="cost" step="0.01" min="0" placeholder="0.00"></label>
+    </div>
+    <label>Vendor / Contractor <input type="text" name="vendor"></label>
+    <label>Notes <textarea name="notes"></textarea></label>
+    <label>Attach receipts / photos <input type="file" name="attachments" multiple></label>
+    <div id="existingAttachments" class="log-attachments"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="entryCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Entry</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- PROJECT DIALOG -->
+<dialog id="projectDialog">
+  <form id="projectForm">
+    <h3 id="projectDialogTitle">Add Project</h3>
+    <label>Name <input type="text" name="name" required placeholder="e.g. Master Bathroom Redo"></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Exterior</option>
+          <option>Interior</option>
+          <option>Kitchen & Bath</option>
+          <option>Landscape / Yard</option>
+          <option>Systems (HVAC/Electrical/Plumbing)</option>
+          <option>Structural</option>
+          <option>Maintenance</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option>Idea</option>
+          <option>Planned</option>
+          <option>In Progress</option>
+          <option>On Hold</option>
+          <option>Complete</option>
+        </select>
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Priority
+        <select name="priority">
+          <option>High</option>
+          <option selected>Medium</option>
+          <option>Low</option>
+        </select>
+      </label>
+      <label>Estimate range ($)
+        <div style="display:flex; gap:6px;">
+          <input type="number" name="estimateLow" placeholder="Low" min="0">
+          <input type="number" name="estimateHigh" placeholder="High" min="0">
+        </div>
+      </label>
+    </div>
+    <label>Notes <textarea name="notes" placeholder="Scope, ideas, contractor names, links to Obsidian notes…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="projectCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Project</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ISSUE DIALOG -->
+<dialog id="issueDialog">
+  <form id="issueForm">
+    <h3 id="issueDialogTitle">Report Issue</h3>
+    <label>Date found <input type="date" name="dateFound" required></label>
+    <label>Title <input type="text" name="title" required placeholder="e.g. Under-gunwale lights not getting power"></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Exterior</option>
+          <option>Interior</option>
+          <option>Kitchen & Bath</option>
+          <option>Landscape / Yard</option>
+          <option>Systems (HVAC/Electrical/Plumbing)</option>
+          <option>Structural</option>
+          <option>Maintenance</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Severity
+        <select name="severity">
+          <option>Urgent — Do Not Use</option>
+          <option selected>Needs Attention</option>
+          <option>Minor / Monitor</option>
+        </select>
+      </label>
+    </div>
+    <label>Status
+      <select name="status">
+        <option>Open</option>
+        <option>In Progress</option>
+        <option>Resolved</option>
+      </select>
+    </label>
+    <label>Notes <textarea name="notes" placeholder="What's wrong, what you've tried, what it needs…"></textarea></label>
+    <label>Attach photos <input type="file" name="attachments" multiple accept="image/*"></label>
+    <div id="existingIssueAttachments" class="log-attachments"></div>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="issueCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Issue</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- FILES DIALOG -->
+<dialog id="filesDialog">
+  <div style="padding:20px 22px;">
+    <div style="display:flex; justify-content:space-between; align-items:center;">
+      <h3 id="filesDialogTitle">Files</h3>
+      <button class="btn ghost small" id="filesDialogClose">Close</button>
+    </div>
+    <div id="filesDialogBody"></div>
+  </div>
+</dialog>
+
+<script type="module">
+import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, deleteFile } from "./firebase-sync.js";
+(function(){
+  "use strict";
+
+  const DOC_PATH = "trackers/house";
+  const CATEGORIES = ["Exterior","Interior","Kitchen & Bath","Landscape / Yard","Systems (HVAC/Electrical/Plumbing)","Structural","Maintenance","Other"];
+  const SEVERITY_KEY = { "Urgent — Do Not Use":"Urgent", "Needs Attention":"Needs", "Minor / Monitor":"Minor" };
+
+  const qs = (s,r)=> (r||document).querySelector(s);
+  const qsa = (s,r)=> Array.from((r||document).querySelectorAll(s));
+  const sum = arr => arr.reduce((a,b)=>a+(b||0),0);
+  const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
+  const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const escapeAttr = escapeHtml;
+  const formatCurrency = n => (n==null) ? "" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
+  const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
+  const sanitizeFolderName = name => (name||"").replace(/[<>:"\/\\|?*]/g,"").trim().slice(0,100) || "Untitled";
+  const sanitizeFileName = name => (name||"file").replace(/[<>:"\/\\|?*]/g,"_").trim().slice(0,150);
+
+  let state = { version:1, updatedAt:0, projects:[], logEntries:[], maintenanceIssues:[] };
+  let currentUser = null;
+  let unsubscribeDoc = null;
+  let saveTimer = null;
+  let logFilters = { search:"", projectId:"", category:"", from:"", to:"" };
+  let mFilters = { search:"", category:"", status:"", severity:"" };
+
+  // ---------- Persistence ----------
+  function saveLocal(){ localStorage.setItem("houseTrackerData", JSON.stringify(state)); }
+  function persist(){
+    state.updatedAt = Date.now();
+    saveLocal();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      if(!currentUser) return;
+      saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e));
+    }, 350);
+  }
+
+  function emptyState(){
+    return { version:1, updatedAt: Date.now(), projects:[], logEntries:[], maintenanceIssues:[] };
+  }
+  function normalizeState(s){
+    if(!s.projects) s.projects = [];
+    if(!s.logEntries) s.logEntries = [];
+    if(!s.maintenanceIssues) s.maintenanceIssues = [];
+    s.projects.forEach(p=>{ if(!p.folderName) p.folderName = sanitizeFolderName(p.name); });
+    s.maintenanceIssues.forEach(m=>{ if(!m.folderName) m.folderName = sanitizeFolderName(m.title); });
+    return s;
+  }
+
+  // ---------- Attachment storage helpers (Firebase Storage stands in for local folders) ----------
+  function storagePathFor(pathArr){ return ["house", ...pathArr].join("/"); }
+  async function uploadAttachment(pathArr, file){
+    const safeName = `${Date.now()}-${Math.random().toString(16).slice(2,6)}-${sanitizeFileName(file.name)}`;
+    const url = await uploadFile(storagePathFor([...pathArr, safeName]), file, file.name);
+    return { name: safeName, originalName: file.name, url, addedAt: Date.now() };
+  }
+  function attachmentPathFor(entry){
+    if(entry.projectId){
+      const p = getProjectById(entry.projectId);
+      if(p) return ["House Projects", p.folderName, "Receipts"];
+    }
+    return ["General Maintenance","Receipts"];
+  }
+  function attachmentPathForIssue(issue){
+    return ["Maintenance Issues", issue.folderName, "Photos"];
+  }
+
+  // ---------- Auth flow ----------
+  function setConnStatus(text){ qs("#connStatus").textContent = text; }
+
+  async function onDataSnapshot(data, isLocalEcho){
+    if(isLocalEcho) return;
+    if(data){
+      state = normalizeState(data);
+    } else {
+      state = emptyState();
+      await saveDoc(DOC_PATH, state);
+    }
+    saveLocal();
+    renderAll();
+  }
+
+  function showSignedIn(user){
+    currentUser = user;
+    qs("#signedOutRow").style.display = "none";
+    qs("#signedInRow").style.display = "";
+    setConnStatus("Signed in: " + user.email);
+    if(unsubscribeDoc) unsubscribeDoc();
+    unsubscribeDoc = watchDoc(DOC_PATH, onDataSnapshot);
+  }
+  function showSignedOut(){
+    currentUser = null;
+    if(unsubscribeDoc){ unsubscribeDoc(); unsubscribeDoc = null; }
+    qs("#signedOutRow").style.display = "";
+    qs("#signedInRow").style.display = "none";
+  }
+  async function handleLogin(){
+    const email = qs("#loginEmail").value.trim();
+    const password = qs("#loginPassword").value;
+    const errEl = qs("#loginError");
+    errEl.style.display = "none";
+    try{
+      await login(email, password);
+      qs("#loginPassword").value = "";
+    }catch(e){
+      errEl.textContent = "Sign-in failed: " + e.message;
+      errEl.style.display = "";
+    }
+  }
+
+  // ---------- Derived data ----------
+  function getProjectById(id){ return state.projects.find(p=>p.id===id) || null; }
+  function projectSpent(projectId){ return sum(state.logEntries.filter(e=>e.projectId===projectId).map(e=>e.cost||0)); }
+
+  // ---------- Templates ----------
+  function entryRowHtml(e){
+    const p = getProjectById(e.projectId);
+    return `<div class="log-row" data-id="${e.id}">
+      <div class="log-date">${formatDate(e.date)}</div>
+      <div class="log-main">
+        <div class="log-title">${escapeHtml(e.title)}${p?`<span class="badge proj">${escapeHtml(p.name)}</span>`:""}</div>
+        <div class="log-meta">${escapeHtml(e.category)}${e.vendor?" · "+escapeHtml(e.vendor):""}${(e.attachments&&e.attachments.length)?" · "+e.attachments.length+" file"+(e.attachments.length>1?"s":""):""}</div>
+        ${e.notes?`<div class="log-notes">${escapeHtml(e.notes)}</div>`:""}
+        ${(e.attachments&&e.attachments.length)?`<div class="log-attachments">${e.attachments.map(a=>`<button type="button" class="chip" data-action="open-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
+      </div>
+      <div class="log-cost">${e.cost!=null?formatCurrency(e.cost):""}</div>
+      <div class="log-actions">
+        <button class="icon-btn" data-action="edit-entry" data-id="${e.id}" title="Edit">✎</button>
+        <button class="icon-btn" data-action="delete-entry" data-id="${e.id}" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }
+  function issueRowHtml(m){
+    const sevKey = SEVERITY_KEY[m.severity] || "Minor";
+    const statKey = (m.status||"").replace(/\s+/g,"");
+    return `<div class="log-row" data-id="${m.id}">
+      <div class="log-date">${formatDate(m.dateFound)}</div>
+      <div class="log-main">
+        <div class="log-title">${escapeHtml(m.title)} <span class="badge severity-${sevKey}">${escapeHtml(m.severity)}</span> <span class="badge mstatus-${statKey}">${escapeHtml(m.status)}</span></div>
+        <div class="log-meta">${escapeHtml(m.category)}${m.dateResolved?" · Resolved "+formatDate(m.dateResolved):""}${(m.attachments&&m.attachments.length)?" · "+m.attachments.length+" file"+(m.attachments.length>1?"s":""):""}</div>
+        ${m.notes?`<div class="log-notes">${escapeHtml(m.notes)}</div>`:""}
+        ${(m.attachments&&m.attachments.length)?`<div class="log-attachments">${m.attachments.map(a=>`<button type="button" class="chip" data-action="open-issue-attachment" data-issue="${m.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
+        <div class="pc-actions" style="margin-top:8px;">${nextIssueStatusButtons(m)}</div>
+      </div>
+      <div class="log-cost"></div>
+      <div class="log-actions">
+        <button class="icon-btn" data-action="edit-issue" data-id="${m.id}" title="Edit">✎</button>
+        <button class="icon-btn" data-action="delete-issue" data-id="${m.id}" title="Delete">✕</button>
+      </div>
+    </div>`;
+  }
+  function nextIssueStatusButtons(m){
+    const order = ["Open","In Progress","Resolved"];
+    return order.filter(s=>s!==m.status).map(s=>`<button class="btn ghost small" data-action="set-issue-status" data-id="${m.id}" data-status="${s}">→ ${s}</button>`).join("");
+  }
+  function projectCardHtml(p){
+    const spent = projectSpent(p.id);
+    const est = (p.estimateLow!=null||p.estimateHigh!=null) ? `${p.estimateLow!=null?formatCurrency(p.estimateLow):"?"} – ${p.estimateHigh!=null?formatCurrency(p.estimateHigh):"?"}` : "No estimate yet";
+    return `<div class="project-card" data-id="${p.id}">
+      <div class="pc-top">
+        <div>
+          <div class="pc-name">${escapeHtml(p.name)} <span class="badge priority-${p.priority}">${p.priority}</span></div>
+          <div class="pc-cat">${escapeHtml(p.category)}</div>
+        </div>
+      </div>
+      <div class="pc-est">Estimate: ${est}${spent?` · Spent so far: ${formatCurrency(spent)}`:""}</div>
+      ${p.notes?`<div class="pc-notes">${escapeHtml(p.notes)}</div>`:""}
+      <div class="pc-actions">
+        <button class="btn small" data-action="edit-project" data-id="${p.id}">Edit</button>
+        <button class="btn small" data-action="view-project-files" data-id="${p.id}">Files</button>
+        ${nextStatusButtons(p)}
+        <button class="btn ghost small" data-action="delete-project" data-id="${p.id}">Delete</button>
+      </div>
+    </div>`;
+  }
+  function nextStatusButtons(p){
+    const order = ["Idea","Planned","In Progress","On Hold","Complete"];
+    const options = order.filter(s=>s!==p.status);
+    return options.map(s=>`<button class="btn ghost small" data-action="set-status" data-id="${p.id}" data-status="${s}">→ ${s}</button>`).join("");
+  }
+  const STATUS_ORDER = ["Idea","Planned","In Progress","On Hold","Complete"];
+  function statusSelectHtml(p){
+    return `<select class="status-select" data-action="status-select" data-id="${p.id}">
+      ${STATUS_ORDER.map(s=>`<option value="${s}" ${s===p.status?"selected":""}>${s}</option>`).join("")}
+    </select>`;
+  }
+  function kanbanCardHtml(p){
+    const spent = projectSpent(p.id);
+    const est = (p.estimateLow!=null||p.estimateHigh!=null) ? `${p.estimateLow!=null?formatCurrency(p.estimateLow):"?"} – ${p.estimateHigh!=null?formatCurrency(p.estimateHigh):"?"}` : "No estimate yet";
+    return `<div class="project-card" draggable="true" data-id="${p.id}">
+      <div class="pc-top">
+        <div>
+          <div class="pc-name">${escapeHtml(p.name)} <span class="badge priority-${p.priority}">${p.priority}</span></div>
+          <div class="pc-cat">${escapeHtml(p.category)}</div>
+        </div>
+      </div>
+      <div class="pc-est">Estimate: ${est}${spent?` · Spent so far: ${formatCurrency(spent)}`:""}</div>
+      ${p.notes?`<div class="pc-notes">${escapeHtml(p.notes)}</div>`:""}
+      <div class="pc-actions">
+        <button class="btn small" data-action="edit-project" data-id="${p.id}">Edit</button>
+        <button class="btn small" data-action="view-project-files" data-id="${p.id}">Files</button>
+        <button class="btn ghost small" data-action="delete-project" data-id="${p.id}">Delete</button>
+        ${statusSelectHtml(p)}
+      </div>
+    </div>`;
+  }
+  function setProjectStatus(id, status){
+    const p = getProjectById(id);
+    if(!p || !status) return;
+    p.status = status;
+    if(p.status==="In Progress" && !p.startedAt) p.startedAt = Date.now();
+    if(p.status==="Complete" && !p.completedAt) p.completedAt = Date.now();
+    if(p.status!=="Complete") p.completedAt = null;
+    persist();
+    renderAll();
+  }
+
+  // ---------- Renderers ----------
+  function populateProjectSelect(selectEl){
+    if(!selectEl) return;
+    const current = selectEl.value;
+    selectEl.innerHTML = '<option value="">General / Not project-specific</option>' +
+      [...state.projects].sort((a,b)=>a.name.localeCompare(b.name)).map(p=>`<option value="${p.id}">${escapeHtml(p.name)}</option>`).join("");
+    selectEl.value = current;
+  }
+  function populateFilterCategory(){
+    const sel = qs("#filterCategory");
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+    sel.value = current;
+  }
+
+  function renderDashboard(){
+    const totalSpent = sum(state.logEntries.map(e=>e.cost||0));
+    const yearNow = new Date().getFullYear();
+    const spentThisYear = sum(state.logEntries.filter(e=> new Date(e.date+"T00:00:00").getFullYear()===yearNow).map(e=>e.cost||0));
+    const openProjects = state.projects.filter(p=>["Planned","In Progress"].includes(p.status)).length;
+    const completeProjects = state.projects.filter(p=>p.status==="Complete").length;
+
+    qs("#statTotalSpent").textContent = formatCurrency(totalSpent) || "$0";
+    qs("#statYearSpent").textContent = formatCurrency(spentThisYear) || "$0";
+    qs("#statOpenProjects").textContent = openProjects;
+    qs("#statCompleteProjects").textContent = completeProjects;
+
+    const byCat = {};
+    state.logEntries.forEach(e=>{ if(e.cost) byCat[e.category] = (byCat[e.category]||0) + e.cost; });
+    const entries = Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
+    const maxVal = Math.max(1, ...entries.map(x=>x[1]));
+    qs("#categoryBreakdown").innerHTML = entries.map(([cat,val])=>`
+      <div class="bar-row">
+        <div class="bar-label">${escapeHtml(cat)}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(val/maxVal*100).toFixed(1)}%"></div></div>
+        <div class="bar-value">${formatCurrency(val)}</div>
+      </div>`).join("") || '<p class="empty">No spend logged yet — add a work log entry to get started.</p>';
+
+    const recent = [...state.logEntries].sort((a,b)=> new Date(b.date)-new Date(a.date)).slice(0,6);
+    qs("#recentEntries").innerHTML = recent.map(entryRowHtml).join("") || '<p class="empty">No entries yet.</p>';
+
+    const priorityOrder = { High:0, Medium:1, Low:2 };
+    const planning = state.projects.filter(p=>["Idea","Planned"].includes(p.status))
+      .sort((a,b)=> priorityOrder[a.priority]-priorityOrder[b.priority]).slice(0,4);
+    qs("#topPlanning").innerHTML = planning.map(projectCardHtml).join("") || '<p class="empty">Nothing on the planning list yet.</p>';
+
+    const openIssues = state.maintenanceIssues.filter(m=>m.status!=="Resolved");
+    const urgentOpen = openIssues.filter(m=>m.severity==="Urgent — Do Not Use");
+    qs("#maintenanceBanner").innerHTML = urgentOpen.length ? `
+      <div class="warn-banner">
+        <strong>⚠ ${urgentOpen.length} issue${urgentOpen.length>1?"s":""} flagged Do Not Use</strong>
+        <ul>${urgentOpen.map(m=>`<li>${escapeHtml(m.title)} (${escapeHtml(m.category)})</li>`).join("")}</ul>
+      </div>` : "";
+    const severityOrder = { "Urgent — Do Not Use":0, "Needs Attention":1, "Minor / Monitor":2 };
+    const openSorted = [...openIssues].sort((a,b)=> (severityOrder[a.severity]??3)-(severityOrder[b.severity]??3)).slice(0,4);
+    qs("#openIssuesList").innerHTML = openSorted.map(issueRowHtml).join("") || '<p class="empty">No open maintenance issues.</p>';
+  }
+
+  function getFilteredEntries(){
+    return state.logEntries.filter(e=>{
+      if(logFilters.projectId && e.projectId!==logFilters.projectId) return false;
+      if(logFilters.category && e.category!==logFilters.category) return false;
+      if(logFilters.from && e.date < logFilters.from) return false;
+      if(logFilters.to && e.date > logFilters.to) return false;
+      if(logFilters.search){
+        const hay = ((e.title||"")+" "+(e.notes||"")+" "+(e.vendor||"")).toLowerCase();
+        if(!hay.includes(logFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> new Date(b.date)-new Date(a.date));
+  }
+  function renderLog(){
+    populateProjectSelect(qs("#filterProject"));
+    populateFilterCategory();
+    qs("#logList").innerHTML = getFilteredEntries().map(entryRowHtml).join("") || '<p class="empty">No matching entries.</p>';
+  }
+
+  function getFilteredIssues(){
+    return state.maintenanceIssues.filter(m=>{
+      if(mFilters.category && m.category!==mFilters.category) return false;
+      if(mFilters.status && m.status!==mFilters.status) return false;
+      if(mFilters.severity && m.severity!==mFilters.severity) return false;
+      if(mFilters.search){
+        const hay = ((m.title||"")+" "+(m.notes||"")).toLowerCase();
+        if(!hay.includes(mFilters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> new Date(b.dateFound)-new Date(a.dateFound));
+  }
+  function populateFilterMCategory(){
+    const sel = qs("#filterMCategory");
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+    sel.value = current;
+  }
+  function renderMaintenance(){
+    populateFilterMCategory();
+    qs("#maintenanceList").innerHTML = getFilteredIssues().map(issueRowHtml).join("") || '<p class="empty">No maintenance issues logged.</p>';
+  }
+
+  function renderPlanning(){
+    const groups = { Idea:[], Planned:[], "In Progress":[], "On Hold":[], Complete:[] };
+    state.projects.forEach(p=>{ if(groups[p.status]) groups[p.status].push(p); });
+    const priorityOrder = { High:0, Medium:1, Low:2 };
+    Object.keys(groups).forEach(k=> groups[k].sort((a,b)=> priorityOrder[a.priority]-priorityOrder[b.priority]));
+    qs("#col-Idea").innerHTML = groups.Idea.map(kanbanCardHtml).join("") || '<p class="empty">Nothing here.</p>';
+    qs("#col-Planned").innerHTML = groups.Planned.map(kanbanCardHtml).join("") || '<p class="empty">Nothing here.</p>';
+    qs("#col-InProgress").innerHTML = groups["In Progress"].map(kanbanCardHtml).join("") || '<p class="empty">Nothing here.</p>';
+    qs("#col-OnHold").innerHTML = groups["On Hold"].map(kanbanCardHtml).join("") || '<p class="empty">Nothing here.</p>';
+    qs("#col-Complete").innerHTML = groups.Complete.map(kanbanCardHtml).join("") || '<p class="empty">Nothing here.</p>';
+  }
+
+  function renderProjects(){
+    const rows = [...state.projects].sort((a,b)=> a.status.localeCompare(b.status) || a.name.localeCompare(b.name));
+    qs("#projectsTable").innerHTML = rows.map(p=>{
+      const spent = projectSpent(p.id);
+      const count = state.logEntries.filter(e=>e.projectId===p.id).length;
+      const est = (p.estimateLow!=null||p.estimateHigh!=null) ? `${p.estimateLow!=null?formatCurrency(p.estimateLow):"?"}–${p.estimateHigh!=null?formatCurrency(p.estimateHigh):"?"}` : "—";
+      return `<tr>
+        <td>${escapeHtml(p.name)}</td>
+        <td>${escapeHtml(p.category)}</td>
+        <td><span class="badge status-${p.status.replace(/\s+/g,"")}" data-status="${p.status}">${p.status}</span></td>
+        <td>${est}</td>
+        <td>${spent?formatCurrency(spent):"—"}</td>
+        <td>${count}</td>
+        <td style="white-space:nowrap;">
+          <button class="btn small" data-action="edit-project" data-id="${p.id}">Edit</button>
+          <button class="btn small" data-action="view-project-files" data-id="${p.id}">Files</button>
+          <button class="btn ghost small" data-action="delete-project" data-id="${p.id}">Delete</button>
+        </td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="7" class="empty">No projects yet.</td></tr>`;
+  }
+
+  function renderAll(){
+    renderDashboard();
+    renderLog();
+    renderPlanning();
+    renderProjects();
+    renderMaintenance();
+  }
+
+  // ---------- Dialogs ----------
+  const entryDialog = qs("#entryDialog");
+  const projectDialog = qs("#projectDialog");
+  const filesDialog = qs("#filesDialog");
+  const issueDialog = qs("#issueDialog");
+
+  function openEntryDialog(id){
+    const form = qs("#entryForm");
+    form.reset();
+    populateProjectSelect(form.projectId);
+    if(id){
+      const e = state.logEntries.find(x=>x.id===id);
+      form.dataset.editingId = id;
+      qs("#entryDialogTitle").textContent = "Edit Log Entry";
+      form.date.value = e.date;
+      form.projectId.value = e.projectId || "";
+      form.title.value = e.title;
+      form.category.value = e.category;
+      form.vendor.value = e.vendor || "";
+      form.cost.value = e.cost ?? "";
+      form.notes.value = e.notes || "";
+      qs("#existingAttachments").innerHTML = (e.attachments||[]).map(a=>`
+        <span class="chip removable">
+          <button type="button" style="all:unset;cursor:pointer;" data-action="open-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>
+          <button type="button" class="chip-remove" data-action="remove-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">✕</button>
+        </span>`).join("");
+    } else {
+      delete form.dataset.editingId;
+      qs("#entryDialogTitle").textContent = "Add Log Entry";
+      form.date.value = new Date().toISOString().slice(0,10);
+      qs("#existingAttachments").innerHTML = "";
+    }
+    entryDialog.showModal();
+  }
+
+  function openProjectDialog(id){
+    const form = qs("#projectForm");
+    form.reset();
+    if(id){
+      const p = getProjectById(id);
+      form.dataset.editingId = id;
+      qs("#projectDialogTitle").textContent = "Edit Project";
+      form.name.value = p.name;
+      form.category.value = p.category;
+      form.status.value = p.status;
+      form.priority.value = p.priority;
+      form.estimateLow.value = p.estimateLow ?? "";
+      form.estimateHigh.value = p.estimateHigh ?? "";
+      form.notes.value = p.notes || "";
+    } else {
+      delete form.dataset.editingId;
+      qs("#projectDialogTitle").textContent = "Add Project";
+    }
+    projectDialog.showModal();
+  }
+
+  async function showProjectFiles(projectId){
+    const p = getProjectById(projectId);
+    if(!p) return;
+    try{
+      const receipts = await listFiles(storagePathFor(["House Projects", p.folderName, "Receipts"]));
+      const photos = await listFiles(storagePathFor(["House Projects", p.folderName, "Photos"]));
+      qs("#filesDialogTitle").textContent = p.name + " — Files";
+      qs("#filesDialogBody").innerHTML = `
+        <h4>Receipts (${receipts.length})</h4>
+        <div class="file-chip-list">${receipts.map(f=>`<a class="chip" style="text-decoration:none;" href="${escapeAttr(f.url)}" target="_blank" rel="noopener">${escapeHtml(f.originalName)}</a>`).join("") || '<span class="empty">None yet</span>'}</div>
+        <h4>Photos (${photos.length})</h4>
+        <div class="file-chip-list">${photos.map(f=>`<a class="chip" style="text-decoration:none;" href="${escapeAttr(f.url)}" target="_blank" rel="noopener">${escapeHtml(f.originalName)}</a>`).join("") || '<span class="empty">None yet</span>'}</div>
+        <label class="btn small" style="margin-top:12px; display:inline-block; cursor:pointer;">+ Add photos
+          <input type="file" multiple accept="image/*" style="display:none;" id="addPhotosInput" data-project="${p.id}">
+        </label>
+        <p class="hint">Stored under House Projects / ${escapeHtml(p.folderName)} / Receipts or Photos</p>
+      `;
+      const photoInput = qs("#addPhotosInput");
+      photoInput.addEventListener("change", async ()=>{
+        for(const file of photoInput.files){
+          await uploadAttachment(["House Projects", p.folderName, "Photos"], file);
+        }
+        showProjectFiles(p.id);
+      });
+      filesDialog.showModal();
+    }catch(e){ alert("Could not load files: "+e.message); }
+  }
+
+  function openIssueDialog(id){
+    const form = qs("#issueForm");
+    form.reset();
+    if(id){
+      const m = state.maintenanceIssues.find(x=>x.id===id);
+      form.dataset.editingId = id;
+      qs("#issueDialogTitle").textContent = "Edit Issue";
+      form.dateFound.value = m.dateFound;
+      form.title.value = m.title;
+      form.category.value = m.category;
+      form.severity.value = m.severity;
+      form.status.value = m.status;
+      form.notes.value = m.notes || "";
+      qs("#existingIssueAttachments").innerHTML = (m.attachments||[]).map(a=>`
+        <span class="chip removable">
+          <button type="button" style="all:unset;cursor:pointer;" data-action="open-issue-attachment" data-issue="${m.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>
+          <button type="button" class="chip-remove" data-action="remove-issue-attachment" data-issue="${m.id}" data-name="${escapeAttr(a.name)}">✕</button>
+        </span>`).join("");
+    } else {
+      delete form.dataset.editingId;
+      qs("#issueDialogTitle").textContent = "Report Issue";
+      form.dateFound.value = new Date().toISOString().slice(0,10);
+      form.status.value = "Open";
+      qs("#existingIssueAttachments").innerHTML = "";
+    }
+    issueDialog.showModal();
+  }
+
+  // ---------- Form handlers ----------
+  async function handleEntrySubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    const entry = editingId ? state.logEntries.find(x=>x.id===editingId) : { id:uid(), attachments:[], createdAt:Date.now() };
+    entry.date = fd.get("date");
+    entry.projectId = fd.get("projectId") || null;
+    entry.title = (fd.get("title")||"").trim();
+    entry.category = fd.get("category");
+    entry.vendor = (fd.get("vendor")||"").trim();
+    entry.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
+    entry.notes = (fd.get("notes")||"").trim();
+    if(!entry.attachments) entry.attachments = [];
+
+    const files = form.attachments.files;
+    if(files && files.length){
+      const pathArr = attachmentPathFor(entry);
+      for(const file of files){
+        entry.attachments.push(await uploadAttachment(pathArr, file));
+      }
+    }
+
+    if(!editingId) state.logEntries.push(entry);
+    persist();
+    entryDialog.close();
+    renderAll();
+  }
+
+  async function handleProjectSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    let project = editingId ? getProjectById(editingId) : null;
+    const isNew = !project;
+    if(isNew) project = { id:uid(), createdAt:Date.now(), startedAt:null, completedAt:null };
+
+    project.name = (fd.get("name")||"").trim();
+    project.category = fd.get("category");
+    project.status = fd.get("status");
+    project.priority = fd.get("priority");
+    project.estimateLow = fd.get("estimateLow") ? Number(fd.get("estimateLow")) : null;
+    project.estimateHigh = fd.get("estimateHigh") ? Number(fd.get("estimateHigh")) : null;
+    project.notes = (fd.get("notes")||"").trim();
+    if(isNew) project.folderName = sanitizeFolderName(project.name);
+    if(project.status==="In Progress" && !project.startedAt) project.startedAt = Date.now();
+    if(project.status==="Complete" && !project.completedAt) project.completedAt = Date.now();
+    if(project.status!=="Complete") project.completedAt = null;
+
+    if(isNew) state.projects.push(project);
+    persist();
+    projectDialog.close();
+    renderAll();
+  }
+
+  async function handleIssueSubmit(ev){
+    ev.preventDefault();
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    let issue = editingId ? state.maintenanceIssues.find(x=>x.id===editingId) : null;
+    const isNew = !issue;
+    if(isNew) issue = { id:uid(), attachments:[], createdAt:Date.now() };
+
+    issue.dateFound = fd.get("dateFound");
+    issue.title = (fd.get("title")||"").trim();
+    issue.category = fd.get("category");
+    issue.severity = fd.get("severity");
+    const prevStatus = issue.status;
+    issue.status = fd.get("status");
+    issue.notes = (fd.get("notes")||"").trim();
+    if(!issue.attachments) issue.attachments = [];
+    if(isNew) issue.folderName = sanitizeFolderName(issue.title);
+    if(issue.status==="Resolved" && prevStatus!=="Resolved") issue.dateResolved = new Date().toISOString().slice(0,10);
+    if(issue.status!=="Resolved") issue.dateResolved = null;
+
+    const files = form.attachments.files;
+    if(files && files.length){
+      const pathArr = attachmentPathForIssue(issue);
+      for(const file of files){
+        issue.attachments.push(await uploadAttachment(pathArr, file));
+      }
+    }
+
+    if(isNew) state.maintenanceIssues.push(issue);
+    persist();
+    issueDialog.close();
+    renderAll();
+  }
+
+  async function deleteEntry(id){
+    if(!confirm("Delete this log entry? This does not delete any receipt files already saved to cloud storage.")) return;
+    state.logEntries = state.logEntries.filter(x=>x.id!==id);
+    persist(); renderAll();
+  }
+  async function deleteProject(id){
+    const hasEntries = state.logEntries.some(x=>x.projectId===id);
+    const msg = hasEntries
+      ? "This project has log entries linked to it. Delete anyway? Its log entries will be kept but unlinked from any project."
+      : "Delete this project? Its files in cloud storage will NOT be deleted.";
+    if(!confirm(msg)) return;
+    state.projects = state.projects.filter(x=>x.id!==id);
+    state.logEntries.forEach(e=>{ if(e.projectId===id) e.projectId = null; });
+    persist(); renderAll();
+  }
+  async function removeEntryAttachment(entryId, name){
+    const entry = state.logEntries.find(x=>x.id===entryId);
+    if(!entry) return;
+    if(!confirm("Remove this attachment? The saved file will also be deleted from cloud storage.")) return;
+    await deleteFile(storagePathFor([...attachmentPathFor(entry), name]));
+    entry.attachments = entry.attachments.filter(a=>a.name!==name);
+    persist();
+    openEntryDialog(entryId);
+    renderAll();
+  }
+  async function deleteIssue(id){
+    if(!confirm("Delete this maintenance issue? This does not delete any photos already saved to cloud storage.")) return;
+    state.maintenanceIssues = state.maintenanceIssues.filter(x=>x.id!==id);
+    persist(); renderAll();
+  }
+  async function removeIssueAttachment(issueId, name){
+    const issue = state.maintenanceIssues.find(x=>x.id===issueId);
+    if(!issue) return;
+    if(!confirm("Remove this photo? The saved file will also be deleted from cloud storage.")) return;
+    await deleteFile(storagePathFor([...attachmentPathForIssue(issue), name]));
+    issue.attachments = issue.attachments.filter(a=>a.name!==name);
+    persist();
+    openIssueDialog(issueId);
+    renderAll();
+  }
+  function setIssueStatus(id, status){
+    const m = state.maintenanceIssues.find(x=>x.id===id);
+    if(!m || !status) return;
+    m.status = status;
+    m.dateResolved = status==="Resolved" ? new Date().toISOString().slice(0,10) : null;
+    persist();
+    renderAll();
+  }
+
+  // ---------- Event wiring ----------
+  qsa(".tab-btn").forEach(btn=> btn.addEventListener("click", ()=>{
+    qsa(".tab-btn").forEach(b=>b.classList.remove("active"));
+    qsa(".tab-panel").forEach(p=>p.classList.remove("active"));
+    btn.classList.add("active");
+    qs("#"+btn.dataset.tab).classList.add("active");
+  }));
+
+  document.body.addEventListener("click", async (ev)=>{
+    const btn = ev.target.closest("[data-action]");
+    if(!btn) return;
+    const action = btn.dataset.action;
+    if(action==="add-entry") openEntryDialog(null);
+    else if(action==="add-project") openProjectDialog(null);
+    else if(action==="edit-entry") openEntryDialog(btn.dataset.id);
+    else if(action==="delete-entry") deleteEntry(btn.dataset.id);
+    else if(action==="edit-project") openProjectDialog(btn.dataset.id);
+    else if(action==="delete-project") deleteProject(btn.dataset.id);
+    else if(action==="view-project-files") showProjectFiles(btn.dataset.id);
+    else if(action==="open-attachment"){
+      const entry = state.logEntries.find(x=>x.id===btn.dataset.entry);
+      const a = entry && entry.attachments.find(x=>x.name===btn.dataset.name);
+      if(a) window.open(a.url, "_blank");
+    }
+    else if(action==="remove-attachment") removeEntryAttachment(btn.dataset.entry, btn.dataset.name);
+    else if(action==="set-status") setProjectStatus(btn.dataset.id, btn.dataset.status);
+    else if(action==="add-issue") openIssueDialog(null);
+    else if(action==="edit-issue") openIssueDialog(btn.dataset.id);
+    else if(action==="delete-issue") deleteIssue(btn.dataset.id);
+    else if(action==="set-issue-status") setIssueStatus(btn.dataset.id, btn.dataset.status);
+    else if(action==="open-issue-attachment"){
+      const issue = state.maintenanceIssues.find(x=>x.id===btn.dataset.issue);
+      const a = issue && issue.attachments.find(x=>x.name===btn.dataset.name);
+      if(a) window.open(a.url, "_blank");
+    }
+    else if(action==="remove-issue-attachment") removeIssueAttachment(btn.dataset.issue, btn.dataset.name);
+  });
+
+  document.body.addEventListener("change", (ev)=>{
+    const sel = ev.target.closest('[data-action="status-select"]');
+    if(!sel) return;
+    setProjectStatus(sel.dataset.id, sel.value);
+  });
+
+  // Kanban drag-and-drop
+  document.body.addEventListener("dragstart", (ev)=>{
+    const card = ev.target.closest(".project-card[draggable='true']");
+    if(!card) return;
+    ev.dataTransfer.setData("text/plain", card.dataset.id);
+    ev.dataTransfer.effectAllowed = "move";
+    card.classList.add("dragging");
+  });
+  document.body.addEventListener("dragend", (ev)=>{
+    const card = ev.target.closest(".project-card");
+    if(card) card.classList.remove("dragging");
+  });
+  document.body.addEventListener("dragover", (ev)=>{
+    const col = ev.target.closest(".status-col-list");
+    if(!col) return;
+    ev.preventDefault();
+    ev.dataTransfer.dropEffect = "move";
+    col.classList.add("drag-over");
+  });
+  document.body.addEventListener("dragleave", (ev)=>{
+    const col = ev.target.closest(".status-col-list");
+    if(!col) return;
+    if(col.contains(ev.relatedTarget)) return;
+    col.classList.remove("drag-over");
+  });
+  document.body.addEventListener("drop", (ev)=>{
+    const col = ev.target.closest(".status-col-list");
+    if(!col) return;
+    ev.preventDefault();
+    col.classList.remove("drag-over");
+    const id = ev.dataTransfer.getData("text/plain");
+    setProjectStatus(id, col.dataset.status);
+  });
+
+  qs("#entryForm").addEventListener("submit", handleEntrySubmit);
+  qs("#projectForm").addEventListener("submit", handleProjectSubmit);
+  qs("#issueForm").addEventListener("submit", handleIssueSubmit);
+  qs("#entryCancel").addEventListener("click", ()=> entryDialog.close());
+  qs("#projectCancel").addEventListener("click", ()=> projectDialog.close());
+  qs("#issueCancel").addEventListener("click", ()=> issueDialog.close());
+  qs("#filesDialogClose").addEventListener("click", ()=> filesDialog.close());
+
+  qs("#filterSearch").addEventListener("input", e=>{ logFilters.search = e.target.value; renderLog(); });
+  qs("#filterProject").addEventListener("change", e=>{ logFilters.projectId = e.target.value; renderLog(); });
+  qs("#filterCategory").addEventListener("change", e=>{ logFilters.category = e.target.value; renderLog(); });
+  qs("#filterFrom").addEventListener("change", e=>{ logFilters.from = e.target.value; renderLog(); });
+  qs("#filterTo").addEventListener("change", e=>{ logFilters.to = e.target.value; renderLog(); });
+  qs("#filterClear").addEventListener("click", ()=>{ logFilters = {search:"",projectId:"",category:"",from:"",to:""}; qs("#logFilterForm").reset(); renderLog(); });
+
+  qs("#filterMSearch").addEventListener("input", e=>{ mFilters.search = e.target.value; renderMaintenance(); });
+  qs("#filterMCategory").addEventListener("change", e=>{ mFilters.category = e.target.value; renderMaintenance(); });
+  qs("#filterMStatus").addEventListener("change", e=>{ mFilters.status = e.target.value; renderMaintenance(); });
+  qs("#filterMSeverity").addEventListener("change", e=>{ mFilters.severity = e.target.value; renderMaintenance(); });
+  qs("#filterMClear").addEventListener("click", ()=>{ mFilters = {search:"",category:"",status:"",severity:""}; qs("#maintenanceFilterForm").reset(); renderMaintenance(); });
+
+  qs("#loginBtn").addEventListener("click", handleLogin);
+  qs("#loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") handleLogin(); });
+  qs("#logoutBtn").addEventListener("click", ()=> logout());
+
+  qs("#exportBtn").addEventListener("click", ()=>{
+    const blob = new Blob([JSON.stringify(state,null,2)], { type:"application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `house-tracker-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+  qs("#importInput").addEventListener("change", async (ev)=>{
+    const file = ev.target.files[0]; if(!file) return;
+    if(!confirm("Import will replace all current data in this tracker. Continue?")){ ev.target.value=""; return; }
+    try{
+      const text = await file.text();
+      state = normalizeState(JSON.parse(text));
+      persist();
+      renderAll();
+      alert("Import complete.");
+    }catch(e){ alert("Could not read that file: "+e.message); }
+    ev.target.value = "";
+  });
+
+  // ---------- Init ----------
+  function init(){
+    const cached = localStorage.getItem("houseTrackerData");
+    if(cached){ try{ state = normalizeState(JSON.parse(cached)); }catch(e){ state = emptyState(); } }
+    else { state = emptyState(); }
+    renderAll();
+    onAuth(user=>{ if(user) showSignedIn(user); else showSignedOut(); });
+  }
+  init();
+})();
+</script>
+</body>
+</html>
