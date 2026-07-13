@@ -488,7 +488,7 @@
 </dialog>
 
 <script type="module">
-import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, deleteFile } from "./firebase-sync.js";
+import { bindAuthUI, saveDoc, uploadFile, listFiles, deleteFile, sanitizeFileName, sanitizeFolderName } from "./firebase-sync.js";
 (function(){
   "use strict";
 
@@ -505,13 +505,11 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   const truncate = (s,n=120) => { s = String(s||""); return s.length>n ? s.slice(0,n).trimEnd()+"…" : s; };
   const formatCurrency = n => (n==null) ? "" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
   const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
-  const sanitizeFolderName = name => (name||"").replace(/[<>:"\/\\|?*]/g,"").trim().slice(0,100) || "Untitled";
-  const sanitizeFileName = name => (name||"file").replace(/[<>:"\/\\|?*]/g,"_").trim().slice(0,150);
 
   let state = { version:1, updatedAt:0, projects:[], logEntries:[], maintenanceIssues:[] };
   let currentUser = null;
-  let unsubscribeDoc = null;
   let saveTimer = null;
+  let pendingSave = false;
   let logFilters = { search:"", projectId:"", category:"", from:"", to:"" };
   let mFilters = { search:"", category:"", status:"", severity:"" };
 
@@ -520,10 +518,13 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function persist(){
     state.updatedAt = Date.now();
     saveLocal();
+    pendingSave = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(()=>{
-      if(!currentUser) return;
-      saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e));
+      if(!currentUser){ pendingSave = false; return; }
+      saveDoc(DOC_PATH, state)
+        .catch(e=> console.error("cloud save failed", e))
+        .finally(()=>{ pendingSave = false; });
     }, 350);
   }
 
@@ -534,8 +535,17 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(!s.projects) s.projects = [];
     if(!s.logEntries) s.logEntries = [];
     if(!s.maintenanceIssues) s.maintenanceIssues = [];
-    s.projects.forEach(p=>{ if(!p.folderName) p.folderName = sanitizeFolderName(p.name); });
-    s.maintenanceIssues.forEach(m=>{ if(!m.folderName) m.folderName = sanitizeFolderName(m.title); });
+    s.projects.forEach(p=>{
+      if(!p.folderName) p.folderName = sanitizeFolderName(p.name);
+      if(!p.status) p.status = "Idea";
+      if(!p.priority) p.priority = "Medium";
+    });
+    s.maintenanceIssues.forEach(m=>{
+      if(!m.folderName) m.folderName = sanitizeFolderName(m.title);
+      if(!m.status) m.status = "Open";
+      if(!m.attachments) m.attachments = [];
+    });
+    s.logEntries.forEach(e=>{ if(!e.attachments) e.attachments = []; });
     return s;
   }
 
@@ -543,8 +553,9 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function storagePathFor(pathArr){ return ["boat", ...pathArr].join("/"); }
   async function uploadAttachment(pathArr, file){
     const safeName = `${Date.now()}-${Math.random().toString(16).slice(2,6)}-${sanitizeFileName(file.name)}`;
-    const url = await uploadFile(storagePathFor([...pathArr, safeName]), file, file.name);
-    return { name: safeName, originalName: file.name, url, addedAt: Date.now() };
+    const storagePath = storagePathFor([...pathArr, safeName]);
+    const url = await uploadFile(storagePath, file, file.name);
+    return { name: safeName, originalName: file.name, url, storagePath, addedAt: Date.now() };
   }
   function attachmentPathFor(entry){
     if(entry.projectId){
@@ -556,12 +567,16 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function attachmentPathForIssue(issue){
     return ["Maintenance Issues", issue.folderName, "Photos"];
   }
+  // Attachments uploaded before this fix don't have a stored storagePath yet —
+  // fall back to recomputing it (best-effort) so old records still delete cleanly.
+  function resolveAttachmentStoragePath(a, fallbackPathArr){
+    return a.storagePath || storagePathFor([...fallbackPathArr, a.name]);
+  }
 
   // ---------- Auth flow ----------
-  function setConnStatus(text){ qs("#connStatus").textContent = text; }
-
   async function onDataSnapshot(data, isLocalEcho){
     if(isLocalEcho) return; // our own write echoing back — already reflected locally
+    if(pendingSave) return; // a local edit hasn't been flushed yet — don't let a remote snapshot erase it; our own save will supersede this
     if(data){
       state = normalizeState(data);
     } else {
@@ -572,38 +587,17 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     renderAll();
   }
 
-  function showSignedIn(user){
-    currentUser = user;
-    qs("#signedOutRow").style.display = "none";
-    qs("#signedInRow").style.display = "";
-    qs("#signedOutGate").style.display = "none";
-    qs("#appContent").style.display = "";
-    setConnStatus("Signed in: " + user.email);
-    if(unsubscribeDoc) unsubscribeDoc();
-    unsubscribeDoc = watchDoc(DOC_PATH, onDataSnapshot);
-  }
-  function showSignedOut(){
-    currentUser = null;
-    if(unsubscribeDoc){ unsubscribeDoc(); unsubscribeDoc = null; }
-    qs("#signedOutRow").style.display = "";
-    qs("#signedInRow").style.display = "none";
-    qs("#signedOutGate").style.display = "";
-    qs("#appContent").style.display = "none";
-    state = emptyState();
-  }
-  async function handleLogin(){
-    const email = qs("#loginEmail").value.trim();
-    const password = qs("#loginPassword").value;
-    const errEl = qs("#loginError");
-    errEl.style.display = "none";
-    try{
-      await login(email, password);
-      qs("#loginPassword").value = "";
-    }catch(e){
-      errEl.textContent = "Sign-in failed: " + e.message;
-      errEl.style.display = "";
+  bindAuthUI({
+    docPath: DOC_PATH,
+    onData: onDataSnapshot,
+    onSignedIn: (user)=>{ currentUser = user; },
+    onSignedOut: ()=>{
+      currentUser = null;
+      clearTimeout(saveTimer);
+      pendingSave = false;
+      state = emptyState();
     }
-  }
+  });
 
   // ---------- Derived data ----------
   function getProjectById(id){ return state.projects.find(p=>p.id===id) || null; }
@@ -833,7 +827,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       return `<tr>
         <td>${escapeHtml(p.name)}</td>
         <td>${escapeHtml(p.category)}</td>
-        <td><span class="badge status-${p.status.replace(/\s+/g,"")}" data-status="${p.status}">${p.status}</span></td>
+        <td><span class="badge status-${(p.status||"").replace(/\s+/g,"")}" data-status="${p.status||""}">${p.status||"—"}</span></td>
         <td>${est}</td>
         <td>${spent?formatCurrency(spent):"—"}</td>
         <td>${count}</td>
@@ -929,8 +923,13 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       `;
       const photoInput = qs("#addPhotosInput");
       photoInput.addEventListener("change", async ()=>{
-        for(const file of photoInput.files){
-          await uploadAttachment(["Boat Projects", p.folderName, "Photos"], file);
+        if(!currentUser){ alert("You're signed out — sign in before adding photos."); return; }
+        try{
+          for(const file of photoInput.files){
+            await uploadAttachment(["Boat Projects", p.folderName, "Photos"], file);
+          }
+        }catch(e){
+          alert("Could not upload one or more photos (check your connection).");
         }
         showProjectFiles(p.id);
       });
@@ -969,28 +968,37 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   // ---------- Form handlers ----------
   async function handleEntrySubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
-    const entry = editingId ? state.logEntries.find(x=>x.id===editingId) : { id:uid(), attachments:[], createdAt:Date.now() };
-    entry.date = fd.get("date");
-    entry.projectId = fd.get("projectId") || null;
-    entry.title = (fd.get("title")||"").trim();
-    entry.category = fd.get("category");
-    entry.vendor = (fd.get("vendor")||"").trim();
-    entry.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
-    entry.notes = (fd.get("notes")||"").trim();
-    if(!entry.attachments) entry.attachments = [];
+    const existing = editingId ? state.logEntries.find(x=>x.id===editingId) : null;
+    const draft = existing
+      ? { ...existing, attachments:[...(existing.attachments||[])] }
+      : { id:uid(), attachments:[], createdAt:Date.now() };
+    draft.date = fd.get("date");
+    draft.projectId = fd.get("projectId") || null;
+    draft.title = (fd.get("title")||"").trim();
+    draft.category = fd.get("category");
+    draft.vendor = (fd.get("vendor")||"").trim();
+    draft.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
+    draft.notes = (fd.get("notes")||"").trim();
 
     const files = form.attachments.files;
     if(files && files.length){
-      const pathArr = attachmentPathFor(entry);
-      for(const file of files){
-        entry.attachments.push(await uploadAttachment(pathArr, file));
+      try{
+        const pathArr = attachmentPathFor(draft);
+        for(const file of files){
+          draft.attachments.push(await uploadAttachment(pathArr, file));
+        }
+      }catch(e){
+        alert("Could not upload one or more files (check your connection) — nothing was saved. Try again.");
+        return;
       }
     }
 
-    if(!editingId) state.logEntries.push(entry);
+    if(existing) Object.assign(existing, draft);
+    else state.logEntries.push(draft);
     persist();
     entryDialog.close();
     renderAll();
@@ -998,6 +1006,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   async function handleProjectSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
@@ -1025,34 +1034,41 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   async function handleIssueSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
-    let issue = editingId ? state.maintenanceIssues.find(x=>x.id===editingId) : null;
-    const isNew = !issue;
-    if(isNew) issue = { id:uid(), attachments:[], createdAt:Date.now() };
+    const existing = editingId ? state.maintenanceIssues.find(x=>x.id===editingId) : null;
+    const draft = existing
+      ? { ...existing, attachments:[...(existing.attachments||[])] }
+      : { id:uid(), attachments:[], createdAt:Date.now() };
 
-    issue.dateFound = fd.get("dateFound");
-    issue.title = (fd.get("title")||"").trim();
-    issue.category = fd.get("category");
-    issue.severity = fd.get("severity");
-    const prevStatus = issue.status;
-    issue.status = fd.get("status");
-    issue.notes = (fd.get("notes")||"").trim();
-    if(!issue.attachments) issue.attachments = [];
-    if(isNew) issue.folderName = sanitizeFolderName(issue.title);
-    if(issue.status==="Resolved" && prevStatus!=="Resolved") issue.dateResolved = new Date().toISOString().slice(0,10);
-    if(issue.status!=="Resolved") issue.dateResolved = null;
+    draft.dateFound = fd.get("dateFound");
+    draft.title = (fd.get("title")||"").trim();
+    draft.category = fd.get("category");
+    draft.severity = fd.get("severity");
+    const prevStatus = existing ? existing.status : null;
+    draft.status = fd.get("status");
+    draft.notes = (fd.get("notes")||"").trim();
+    if(!existing) draft.folderName = sanitizeFolderName(draft.title);
+    if(draft.status==="Resolved" && prevStatus!=="Resolved") draft.dateResolved = new Date().toISOString().slice(0,10);
+    if(draft.status!=="Resolved") draft.dateResolved = null;
 
     const files = form.attachments.files;
     if(files && files.length){
-      const pathArr = attachmentPathForIssue(issue);
-      for(const file of files){
-        issue.attachments.push(await uploadAttachment(pathArr, file));
+      try{
+        const pathArr = attachmentPathForIssue(draft);
+        for(const file of files){
+          draft.attachments.push(await uploadAttachment(pathArr, file));
+        }
+      }catch(e){
+        alert("Could not upload one or more files (check your connection) — nothing was saved. Try again.");
+        return;
       }
     }
 
-    if(isNew) state.maintenanceIssues.push(issue);
+    if(existing) Object.assign(existing, draft);
+    else state.maintenanceIssues.push(draft);
     persist();
     issueDialog.close();
     renderAll();
@@ -1077,7 +1093,8 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     const entry = state.logEntries.find(x=>x.id===entryId);
     if(!entry) return;
     if(!confirm("Remove this attachment? The saved file will also be deleted from cloud storage.")) return;
-    await deleteFile(storagePathFor([...attachmentPathFor(entry), name]));
+    const a = (entry.attachments||[]).find(x=>x.name===name);
+    if(a) await deleteFile(resolveAttachmentStoragePath(a, attachmentPathFor(entry)));
     entry.attachments = entry.attachments.filter(a=>a.name!==name);
     persist();
     openEntryDialog(entryId);
@@ -1092,7 +1109,8 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     const issue = state.maintenanceIssues.find(x=>x.id===issueId);
     if(!issue) return;
     if(!confirm("Remove this photo? The saved file will also be deleted from cloud storage.")) return;
-    await deleteFile(storagePathFor([...attachmentPathForIssue(issue), name]));
+    const a = (issue.attachments||[]).find(x=>x.name===name);
+    if(a) await deleteFile(resolveAttachmentStoragePath(a, attachmentPathForIssue(issue)));
     issue.attachments = issue.attachments.filter(a=>a.name!==name);
     persist();
     openIssueDialog(issueId);
@@ -1206,10 +1224,6 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   qs("#filterMSeverity").addEventListener("change", e=>{ mFilters.severity = e.target.value; renderMaintenance(); });
   qs("#filterMClear").addEventListener("click", ()=>{ mFilters = {search:"",category:"",status:"",severity:""}; qs("#maintenanceFilterForm").reset(); renderMaintenance(); });
 
-  qs("#loginBtn").addEventListener("click", handleLogin);
-  qs("#loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") handleLogin(); });
-  qs("#logoutBtn").addEventListener("click", ()=> logout());
-
   qs("#exportBtn").addEventListener("click", ()=>{
     const blob = new Blob([JSON.stringify(state,null,2)], { type:"application/json" });
     const url = URL.createObjectURL(blob);
@@ -1237,7 +1251,6 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(cached){ try{ state = normalizeState(JSON.parse(cached)); }catch(e){ state = emptyState(); } }
     else { state = emptyState(); }
     renderAll();
-    onAuth(user=>{ if(user) showSignedIn(user); else showSignedOut(); });
   }
   init();
 })();

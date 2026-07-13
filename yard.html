@@ -648,7 +648,7 @@
 </dialog>
 
 <script type="module">
-import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, deleteFile } from "./firebase-sync.js";
+import { bindAuthUI, saveDoc, uploadFile, listFiles, deleteFile, sanitizeFileName, sanitizeFolderName } from "./firebase-sync.js";
 (function(){
   "use strict";
 
@@ -673,13 +673,10 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
   const daysBetween = (a,b)=> Math.round((new Date(b+"T00:00:00") - new Date(a+"T00:00:00")) / 86400000);
   const addDays = (dateStr, n) => { const dt = new Date(dateStr+"T00:00:00"); dt.setDate(dt.getDate()+n); return dt.toISOString().slice(0,10); };
-  const sanitizeFolderName = name => (name||"").replace(/[<>:"\/\\|?*]/g,"").trim().slice(0,100) || "Untitled";
-  const sanitizeFileName = name => (name||"file").replace(/[<>:"\/\\|?*]/g,"_").trim().slice(0,150);
-
   let state = { version:1, updatedAt:0, plants:[], tasks:[], activityLog:[], issues:[] };
   let currentUser = null;
-  let unsubscribeDoc = null;
   let saveTimer = null;
+  let pendingSave = false;
   let plantFilters = { search:"", zone:"", type:"", status:"" };
   let taskFilters = { search:"", zone:"", type:"" };
   let logFilters = { search:"", plantId:"", category:"", from:"", to:"" };
@@ -690,10 +687,13 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function persist(){
     state.updatedAt = Date.now();
     saveLocal();
+    pendingSave = true;
     clearTimeout(saveTimer);
     saveTimer = setTimeout(()=>{
-      if(!currentUser) return;
-      saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e));
+      if(!currentUser){ pendingSave = false; return; }
+      saveDoc(DOC_PATH, state)
+        .catch(e=> console.error("cloud save failed", e))
+        .finally(()=>{ pendingSave = false; });
     }, 350);
   }
 
@@ -705,8 +705,19 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(!s.tasks) s.tasks = [];
     if(!s.activityLog) s.activityLog = [];
     if(!s.issues) s.issues = [];
-    s.issues.forEach(i=>{ if(!i.updates) i.updates = []; if(!i.attachments) i.attachments = []; if(!i.folderName) i.folderName = sanitizeFolderName(i.title); });
-    s.plants.forEach(p=>{ if(!p.folderName) p.folderName = sanitizeFolderName(p.name); });
+    s.issues.forEach(i=>{
+      if(!i.updates) i.updates = [];
+      if(!i.attachments) i.attachments = [];
+      if(!i.folderName) i.folderName = sanitizeFolderName(i.title);
+      if(!i.status) i.status = "Monitoring";
+      if(!i.severity) i.severity = "Monitor";
+    });
+    s.plants.forEach(p=>{
+      if(!p.folderName) p.folderName = sanitizeFolderName(p.name);
+      if(!p.status) p.status = "Active";
+    });
+    s.tasks.forEach(t=>{ if(!t.recurrence) t.recurrence = { type:"once" }; });
+    s.activityLog.forEach(e=>{ if(!e.attachments) e.attachments = []; });
     return s;
   }
 
@@ -714,8 +725,9 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function storagePathFor(pathArr){ return ["yard", ...pathArr].join("/"); }
   async function uploadAttachment(pathArr, file){
     const safeName = `${Date.now()}-${Math.random().toString(16).slice(2,6)}-${sanitizeFileName(file.name)}`;
-    const url = await uploadFile(storagePathFor([...pathArr, safeName]), file, file.name);
-    return { name: safeName, originalName: file.name, url, addedAt: Date.now() };
+    const storagePath = storagePathFor([...pathArr, safeName]);
+    const url = await uploadFile(storagePath, file, file.name);
+    return { name: safeName, originalName: file.name, url, storagePath, addedAt: Date.now() };
   }
   function attachmentPathForLog(entry){
     if(entry.plantId){
@@ -727,12 +739,16 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   function attachmentPathForIssue(issue){
     return ["Issues", issue.folderName, "Photos"];
   }
+  // Attachments uploaded before this fix don't have a stored storagePath yet —
+  // fall back to recomputing it (best-effort) so old records still delete cleanly.
+  function resolveAttachmentStoragePath(a, fallbackPathArr){
+    return a.storagePath || storagePathFor([...fallbackPathArr, a.name]);
+  }
 
   // ---------- Auth flow ----------
-  function setConnStatus(text){ qs("#connStatus").textContent = text; }
-
   async function onDataSnapshot(data, isLocalEcho){
     if(isLocalEcho) return;
+    if(pendingSave) return; // a local edit hasn't been flushed yet — don't let a remote snapshot erase it; our own save will supersede this
     if(data){
       state = normalizeState(data);
     } else {
@@ -743,38 +759,17 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     renderAll();
   }
 
-  function showSignedIn(user){
-    currentUser = user;
-    qs("#signedOutRow").style.display = "none";
-    qs("#signedInRow").style.display = "";
-    qs("#signedOutGate").style.display = "none";
-    qs("#appContent").style.display = "";
-    setConnStatus("Signed in: " + user.email);
-    if(unsubscribeDoc) unsubscribeDoc();
-    unsubscribeDoc = watchDoc(DOC_PATH, onDataSnapshot);
-  }
-  function showSignedOut(){
-    currentUser = null;
-    if(unsubscribeDoc){ unsubscribeDoc(); unsubscribeDoc = null; }
-    qs("#signedOutRow").style.display = "";
-    qs("#signedInRow").style.display = "none";
-    qs("#signedOutGate").style.display = "";
-    qs("#appContent").style.display = "none";
-    state = emptyState();
-  }
-  async function handleLogin(){
-    const email = qs("#loginEmail").value.trim();
-    const password = qs("#loginPassword").value;
-    const errEl = qs("#loginError");
-    errEl.style.display = "none";
-    try{
-      await login(email, password);
-      qs("#loginPassword").value = "";
-    }catch(e){
-      errEl.textContent = "Sign-in failed: " + e.message;
-      errEl.style.display = "";
+  bindAuthUI({
+    docPath: DOC_PATH,
+    onData: onDataSnapshot,
+    onSignedIn: (user)=>{ currentUser = user; },
+    onSignedOut: ()=>{
+      currentUser = null;
+      clearTimeout(saveTimer);
+      pendingSave = false;
+      state = emptyState();
     }
-  }
+  });
 
   // ---------- Derived data ----------
   function getPlantById(id){ return state.plants.find(p=>p.id===id) || null; }
@@ -1278,6 +1273,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   // ---------- Form handlers ----------
   async function handlePlantSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
@@ -1304,6 +1300,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   function handleTaskSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
@@ -1349,27 +1346,36 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   async function handleLogSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
-    const entry = editingId ? state.activityLog.find(x=>x.id===editingId) : { id:uid(), attachments:[], createdAt:Date.now() };
-    entry.date = fd.get("date");
-    entry.plantId = fd.get("plantId") || null;
-    entry.title = (fd.get("title")||"").trim();
-    entry.category = fd.get("category");
-    entry.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
-    entry.notes = (fd.get("notes")||"").trim();
-    if(!entry.attachments) entry.attachments = [];
+    const existing = editingId ? state.activityLog.find(x=>x.id===editingId) : null;
+    const draft = existing
+      ? { ...existing, attachments:[...(existing.attachments||[])] }
+      : { id:uid(), attachments:[], createdAt:Date.now() };
+    draft.date = fd.get("date");
+    draft.plantId = fd.get("plantId") || null;
+    draft.title = (fd.get("title")||"").trim();
+    draft.category = fd.get("category");
+    draft.cost = fd.get("cost") ? Number(fd.get("cost")) : null;
+    draft.notes = (fd.get("notes")||"").trim();
 
     const files = form.attachments.files;
     if(files && files.length){
-      const pathArr = attachmentPathForLog(entry);
-      for(const file of files){
-        entry.attachments.push(await uploadAttachment(pathArr, file));
+      try{
+        const pathArr = attachmentPathForLog(draft);
+        for(const file of files){
+          draft.attachments.push(await uploadAttachment(pathArr, file));
+        }
+      }catch(e){
+        alert("Could not upload one or more files (check your connection) — nothing was saved. Try again.");
+        return;
       }
     }
 
-    if(!editingId) state.activityLog.push(entry);
+    if(existing) Object.assign(existing, draft);
+    else state.activityLog.push(draft);
     persist();
     logDialog.close();
     renderAll();
@@ -1377,37 +1383,44 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   async function handleIssueSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const editingId = form.dataset.editingId || null;
-    let issue = editingId ? getIssueById(editingId) : null;
-    const isNew = !issue;
-    if(isNew) issue = { id:uid(), attachments:[], updates:[], createdAt:Date.now() };
+    const existing = editingId ? getIssueById(editingId) : null;
+    const isNew = !existing;
+    const draft = existing
+      ? { ...existing, attachments:[...(existing.attachments||[])], updates:[...(existing.updates||[])] }
+      : { id:uid(), attachments:[], updates:[], createdAt:Date.now() };
 
-    issue.dateNoticed = fd.get("dateNoticed");
-    issue.title = (fd.get("title")||"").trim();
-    issue.plantId = fd.get("plantId") || null;
-    issue.category = fd.get("category");
-    issue.severity = fd.get("severity");
-    issue.status = fd.get("status");
-    if(!issue.attachments) issue.attachments = [];
-    if(!issue.updates) issue.updates = [];
-    if(isNew) issue.folderName = sanitizeFolderName(issue.title);
+    draft.dateNoticed = fd.get("dateNoticed");
+    draft.title = (fd.get("title")||"").trim();
+    draft.plantId = fd.get("plantId") || null;
+    draft.category = fd.get("category");
+    draft.severity = fd.get("severity");
+    draft.status = fd.get("status");
+    if(isNew) draft.folderName = sanitizeFolderName(draft.title);
 
     if(isNew){
       const notes = (fd.get("notes")||"").trim();
-      issue.updates.push({ id:uid(), date: issue.dateNoticed, note: notes || "Issue logged.", createdAt:Date.now() });
+      draft.updates.push({ id:uid(), date: draft.dateNoticed, note: notes || "Issue logged.", createdAt:Date.now() });
     }
 
     const files = form.attachments.files;
     if(files && files.length){
-      const pathArr = attachmentPathForIssue(issue);
-      for(const file of files){
-        issue.attachments.push(await uploadAttachment(pathArr, file));
+      try{
+        const pathArr = attachmentPathForIssue(draft);
+        for(const file of files){
+          draft.attachments.push(await uploadAttachment(pathArr, file));
+        }
+      }catch(e){
+        alert("Could not upload one or more files (check your connection) — nothing was saved. Try again.");
+        return;
       }
     }
 
-    if(isNew) state.issues.push(issue);
+    if(isNew) state.issues.push(draft);
+    else Object.assign(existing, draft);
     persist();
     issueDialog.close();
     renderAll();
@@ -1415,6 +1428,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
 
   function handleIssueUpdateSubmit(ev){
     ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
     const form = ev.target;
     const fd = new FormData(form);
     const issue = getIssueById(form.dataset.issueId);
@@ -1459,7 +1473,8 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     const entry = state.activityLog.find(x=>x.id===entryId);
     if(!entry) return;
     if(!confirm("Remove this attachment? The saved file will also be deleted from cloud storage.")) return;
-    await deleteFile(storagePathFor([...attachmentPathForLog(entry), name]));
+    const a = (entry.attachments||[]).find(x=>x.name===name);
+    if(a) await deleteFile(resolveAttachmentStoragePath(a, attachmentPathForLog(entry)));
     entry.attachments = entry.attachments.filter(a=>a.name!==name);
     persist();
     openLogDialog(entryId);
@@ -1469,7 +1484,8 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     const issue = getIssueById(issueId);
     if(!issue) return;
     if(!confirm("Remove this photo? The saved file will also be deleted from cloud storage.")) return;
-    await deleteFile(storagePathFor([...attachmentPathForIssue(issue), name]));
+    const a = (issue.attachments||[]).find(x=>x.name===name);
+    if(a) await deleteFile(resolveAttachmentStoragePath(a, attachmentPathForIssue(issue)));
     issue.attachments = issue.attachments.filter(a=>a.name!==name);
     persist();
     openIssueDialog(issueId);
@@ -1478,9 +1494,14 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   async function addIssuePhotos(issueId, files){
     const issue = getIssueById(issueId);
     if(!issue || !files.length) return;
-    const pathArr = attachmentPathForIssue(issue);
-    for(const file of files){
-      issue.attachments.push(await uploadAttachment(pathArr, file));
+    if(!currentUser){ alert("You're signed out — sign in before adding photos."); return; }
+    try{
+      const pathArr = attachmentPathForIssue(issue);
+      for(const file of files){
+        issue.attachments.push(await uploadAttachment(pathArr, file));
+      }
+    }catch(e){
+      alert("Could not upload one or more photos (check your connection).");
     }
     persist();
     renderAll();
@@ -1488,8 +1509,13 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   async function addPlantPhotos(plantId, files){
     const p = getPlantById(plantId);
     if(!p || !files.length) return;
-    for(const file of files){
-      await uploadAttachment(["Plants", p.folderName, "Photos"], file);
+    if(!currentUser){ alert("You're signed out — sign in before adding photos."); return; }
+    try{
+      for(const file of files){
+        await uploadAttachment(["Plants", p.folderName, "Photos"], file);
+      }
+    }catch(e){
+      alert("Could not upload one or more photos (check your connection).");
     }
     openPlantDetail(plantId);
   }
@@ -1586,10 +1612,6 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   qs("#filterISeverity").addEventListener("change", e=>{ issueFilters.severity = e.target.value; renderIssues(); });
   qs("#filterIClear").addEventListener("click", ()=>{ issueFilters = {search:"",status:"",severity:""}; qs("#issueFilterForm").reset(); renderIssues(); });
 
-  qs("#loginBtn").addEventListener("click", handleLogin);
-  qs("#loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") handleLogin(); });
-  qs("#logoutBtn").addEventListener("click", ()=> logout());
-
   qs("#exportBtn").addEventListener("click", ()=>{
     const blob = new Blob([JSON.stringify(state,null,2)], { type:"application/json" });
     const url = URL.createObjectURL(blob);
@@ -1617,7 +1639,6 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(cached){ try{ state = normalizeState(JSON.parse(cached)); }catch(e){ state = emptyState(); } }
     else { state = emptyState(); }
     renderAll();
-    onAuth(user=>{ if(user) showSignedIn(user); else showSignedOut(); });
   }
   init();
 })();
