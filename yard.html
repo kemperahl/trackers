@@ -43,6 +43,8 @@
   .conn-row{ display:flex; gap:8px; align-items:center; }
 
   .btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .pill-back{ display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); font-size:14px; font-weight:600; text-decoration:none; margin-bottom:10px; box-shadow:var(--shadow); }
+  .pill-back:hover{ border-color:var(--accent); color:var(--accent); }
   .btn:hover{ border-color:var(--accent); }
   .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .btn.primary:hover{ opacity:0.92; }
@@ -184,7 +186,7 @@
 
   <header class="top">
     <div>
-      <a href="index.html" class="hint" style="text-decoration:none; display:inline-block; margin-bottom:6px;">← All trackers</a>
+      <a href="index.html" class="pill-back">← All trackers</a>
       <h1>🌿 Yard Tracker</h1>
       <div class="sub">Rowayton / Norwalk, CT</div>
     </div>
