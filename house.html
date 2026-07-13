@@ -190,6 +190,11 @@
   </header>
   <p class="hint" id="loginError" style="color:var(--warn); display:none;"></p>
 
+  <div id="signedOutGate" class="card" style="margin-top:20px;">
+    Sign in above to view and edit this tracker.
+  </div>
+
+  <div id="appContent" style="display:none;">
   <nav class="tabs">
     <button class="tab-btn active" data-tab="tab-dashboard">Dashboard</button>
     <button class="tab-btn" data-tab="tab-log">Work Log</button>
@@ -287,6 +292,7 @@
     Data syncs live to the cloud while you're signed in. Receipts and photos are stored per project/issue.
     Use Export regularly as a local backup regardless of sync status.
   </footer>
+  </div>
 </div>
 
 <!-- ENTRY DIALOG -->
@@ -516,6 +522,8 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     currentUser = user;
     qs("#signedOutRow").style.display = "none";
     qs("#signedInRow").style.display = "";
+    qs("#signedOutGate").style.display = "none";
+    qs("#appContent").style.display = "";
     setConnStatus("Signed in: " + user.email);
     if(unsubscribeDoc) unsubscribeDoc();
     unsubscribeDoc = watchDoc(DOC_PATH, onDataSnapshot);
@@ -525,6 +533,9 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(unsubscribeDoc){ unsubscribeDoc(); unsubscribeDoc = null; }
     qs("#signedOutRow").style.display = "";
     qs("#signedInRow").style.display = "none";
+    qs("#signedOutGate").style.display = "";
+    qs("#appContent").style.display = "none";
+    state = emptyState();
   }
   async function handleLogin(){
     const email = qs("#loginEmail").value.trim();
