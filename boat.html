@@ -493,30 +493,6 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     s.maintenanceIssues.forEach(m=>{ if(!m.folderName) m.folderName = sanitizeFolderName(m.title); });
     return s;
   }
-  function seedMaintenanceIssues(){
-    const today = new Date().toISOString().slice(0,10);
-    const seed = [
-      {
-        title: "Under-gunwale lights not getting power",
-        category: "Electrical", severity: "Needs Attention", status: "Open",
-        notes: "Carried over from Boat Context notes — under-gunwale lights aren't getting power, needs rewiring."
-      },
-      {
-        title: "Exposed fiberglass spots (interior)",
-        category: "Hull & Structure", severity: "Needs Attention", status: "Open",
-        notes: "Carried over from Boat Context notes — various spots of exposed fiberglass in the interior (not on the hull), need repair."
-      },
-      {
-        title: "Hydraulic steering leak in cold weather",
-        category: "Steering / Helm", severity: "Needs Attention", status: "Open",
-        notes: "Carried over from Boat Context notes — hydraulic leak at helm occurred in very cold weather (~10°F): wheel became free-spinning, fluid drip noted. Happened prior to the F300 repower; hydraulic steering was kept, so watch for recurrence in cold conditions. Any leak or free-spinning wheel should be treated as do-not-operate until diagnosed."
-      }
-    ];
-    return seed.map(m=> Object.assign({
-      id: uid(), createdAt: Date.now(), attachments: [], dateResolved: null,
-      dateFound: today, folderName: sanitizeFolderName(m.title)
-    }, m));
-  }
 
   // ---------- Attachment storage helpers (Firebase Storage stands in for local folders) ----------
   function storagePathFor(pathArr){ return ["boat", ...pathArr].join("/"); }
@@ -544,9 +520,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     if(data){
       state = normalizeState(data);
     } else {
-      // First-ever sign-in for this account: seed the cloud doc from whatever is currently in memory.
       state = emptyState();
-      state.maintenanceIssues = seedMaintenanceIssues();
       await saveDoc(DOC_PATH, state);
     }
     saveLocal();

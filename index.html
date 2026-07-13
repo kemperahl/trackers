@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ahl Trackers</title>
 <style>
-  :root{ --bg:#f6f4ee; --ink:#2b2b26; --ink-soft:#6d6a5f; --line:#e3ddcd; --accent:#5b7065; }
+  :root{ --bg:#f6f4ee; --surface:#ffffff; --ink:#2b2b26; --ink-soft:#6d6a5f; --line:#e3ddcd; --accent:#5b7065; --warn:#a8583e; }
   @media (prefers-color-scheme: dark){
-    :root{ --bg:#1c1b17; --ink:#eee9dd; --ink-soft:#a8a294; --line:#3a382f; --accent:#8fae9d; }
+    :root{ --bg:#1c1b17; --surface:#242320; --ink:#eee9dd; --ink-soft:#a8a294; --line:#3a382f; --accent:#8fae9d; --warn:#d18567; }
   }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
@@ -16,15 +16,64 @@
   p.sub{ color:var(--ink-soft); margin:0 0 32px; }
   a.card{ display:block; padding:18px 20px; margin-bottom:14px; border:1px solid var(--line); border-radius:10px; text-decoration:none; color:var(--ink); font-size:17px; font-weight:600; }
   a.card span{ display:block; font-size:13px; font-weight:400; color:var(--ink-soft); margin-top:2px; }
+  .btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:8px 14px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .btn:hover{ border-color:var(--accent); }
+  input{ font-family:inherit; font-size:14px; color:var(--ink); background:var(--surface); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+  .login-row{ display:flex; flex-direction:column; gap:8px; margin-bottom:24px; }
+  .login-row input{ width:100%; }
+  .signed-in-row{ display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; font-size:14px; color:var(--ink-soft); }
+  .hint{ font-size:12px; color:var(--warn); margin-top:8px; display:none; }
 </style>
 </head>
 <body>
   <div class="wrap">
     <h1>Ahl Trackers</h1>
     <p class="sub">Boat, house, and yard — synced.</p>
+
+    <div id="signedOutRow" class="login-row">
+      <input type="email" id="loginEmail" placeholder="Email" autocomplete="username">
+      <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password">
+      <button class="btn" id="loginBtn">Sign in</button>
+      <p class="hint" id="loginError"></p>
+    </div>
+    <div id="signedInRow" class="signed-in-row" style="display:none;">
+      <span id="connStatus"></span>
+      <button class="btn" id="logoutBtn">Sign out</button>
+    </div>
+
     <a class="card" href="boat.html">Boat Tracker<span>2004 Regulator 24FS</span></a>
     <a class="card" href="house.html">House Tracker<span>Rowayton / Norwalk</span></a>
     <a class="card" href="yard.html">Yard Tracker<span>Rowayton / Norwalk</span></a>
   </div>
+
+<script type="module">
+import { onAuth, login, logout } from "./firebase-sync.js";
+
+const qs = s => document.querySelector(s);
+
+async function handleLogin(){
+  const email = qs("#loginEmail").value.trim();
+  const password = qs("#loginPassword").value;
+  const errEl = qs("#loginError");
+  errEl.style.display = "none";
+  try{
+    await login(email, password);
+    qs("#loginPassword").value = "";
+  }catch(e){
+    errEl.textContent = "Sign-in failed: " + e.message;
+    errEl.style.display = "";
+  }
+}
+
+qs("#loginBtn").addEventListener("click", handleLogin);
+qs("#loginPassword").addEventListener("keydown", e=>{ if(e.key==="Enter") handleLogin(); });
+qs("#logoutBtn").addEventListener("click", ()=> logout());
+
+onAuth(user=>{
+  qs("#signedOutRow").style.display = user ? "none" : "";
+  qs("#signedInRow").style.display = user ? "" : "none";
+  if(user) qs("#connStatus").textContent = "Signed in: " + user.email;
+});
+</script>
 </body>
 </html>
