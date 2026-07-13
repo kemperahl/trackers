@@ -452,6 +452,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const escapeAttr = escapeHtml;
+  const truncate = (s,n=120) => { s = String(s||""); return s.length>n ? s.slice(0,n).trimEnd()+"…" : s; };
   const formatCurrency = n => (n==null) ? "" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
   const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
   const sanitizeFolderName = name => (name||"").replace(/[<>:"\/\\|?*]/g,"").trim().slice(0,100) || "Untitled";
@@ -566,7 +567,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       <div class="log-main">
         <div class="log-title">${escapeHtml(e.title)}${p?`<span class="badge proj">${escapeHtml(p.name)}</span>`:""}</div>
         <div class="log-meta">${escapeHtml(e.category)}${e.vendor?" · "+escapeHtml(e.vendor):""}${(e.attachments&&e.attachments.length)?" · "+e.attachments.length+" file"+(e.attachments.length>1?"s":""):""}</div>
-        ${e.notes?`<div class="log-notes">${escapeHtml(e.notes)}</div>`:""}
+        ${e.notes?`<div class="log-notes">${escapeHtml(truncate(e.notes))}</div>`:""}
         ${(e.attachments&&e.attachments.length)?`<div class="log-attachments">${e.attachments.map(a=>`<button type="button" class="chip" data-action="open-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
       </div>
       <div class="log-cost">${e.cost!=null?formatCurrency(e.cost):""}</div>
@@ -584,7 +585,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       <div class="log-main">
         <div class="log-title">${escapeHtml(m.title)} <span class="badge severity-${sevKey}">${escapeHtml(m.severity)}</span> <span class="badge mstatus-${statKey}">${escapeHtml(m.status)}</span></div>
         <div class="log-meta">${escapeHtml(m.category)}${m.dateResolved?" · Resolved "+formatDate(m.dateResolved):""}${(m.attachments&&m.attachments.length)?" · "+m.attachments.length+" file"+(m.attachments.length>1?"s":""):""}</div>
-        ${m.notes?`<div class="log-notes">${escapeHtml(m.notes)}</div>`:""}
+        ${m.notes?`<div class="log-notes">${escapeHtml(truncate(m.notes))}</div>`:""}
         ${(m.attachments&&m.attachments.length)?`<div class="log-attachments">${m.attachments.map(a=>`<button type="button" class="chip" data-action="open-issue-attachment" data-issue="${m.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
         <div class="pc-actions" style="margin-top:8px;">${nextIssueStatusButtons(m)}</div>
       </div>
@@ -610,7 +611,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
         </div>
       </div>
       <div class="pc-est">Estimate: ${est}${spent?` · Spent so far: ${formatCurrency(spent)}`:""}</div>
-      ${p.notes?`<div class="pc-notes">${escapeHtml(p.notes)}</div>`:""}
+      ${p.notes?`<div class="pc-notes">${escapeHtml(truncate(p.notes))}</div>`:""}
       <div class="pc-actions">
         <button class="btn small" data-action="edit-project" data-id="${p.id}">Edit</button>
         <button class="btn small" data-action="view-project-files" data-id="${p.id}">Files</button>
@@ -641,7 +642,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
         </div>
       </div>
       <div class="pc-est">Estimate: ${est}${spent?` · Spent so far: ${formatCurrency(spent)}`:""}</div>
-      ${p.notes?`<div class="pc-notes">${escapeHtml(p.notes)}</div>`:""}
+      ${p.notes?`<div class="pc-notes">${escapeHtml(truncate(p.notes))}</div>`:""}
       <div class="pc-actions">
         <button class="btn small" data-action="edit-project" data-id="${p.id}">Edit</button>
         <button class="btn small" data-action="view-project-files" data-id="${p.id}">Files</button>

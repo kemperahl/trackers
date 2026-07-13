@@ -617,6 +617,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const escapeAttr = escapeHtml;
+  const truncate = (s,n=120) => { s = String(s||""); return s.length>n ? s.slice(0,n).trimEnd()+"…" : s; };
   const todayStr = ()=> new Date().toISOString().slice(0,10);
   const formatCurrency = n => (n==null) ? "" : new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
   const formatDate = d => { if(!d) return ""; const dt = new Date(d+"T00:00:00"); return isNaN(dt) ? d : dt.toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}); };
@@ -811,7 +812,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       <div class="log-main">
         <div class="log-title">${escapeHtml(e.title)}${p?`<span class="badge zone">${escapeHtml(p.name)}</span>`:e.zone?`<span class="badge zone">${escapeHtml(e.zone)}</span>`:""}</div>
         <div class="log-meta">${escapeHtml(e.category)}${(e.attachments&&e.attachments.length)?" · "+e.attachments.length+" file"+(e.attachments.length>1?"s":""):""}</div>
-        ${e.notes?`<div class="log-notes">${escapeHtml(e.notes)}</div>`:""}
+        ${e.notes?`<div class="log-notes">${escapeHtml(truncate(e.notes))}</div>`:""}
         ${(e.attachments&&e.attachments.length)?`<div class="log-attachments">${e.attachments.map(a=>`<button type="button" class="chip" data-action="open-log-attachment" data-entry="${e.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
       </div>
       <div class="log-cost">${e.cost!=null?formatCurrency(e.cost):""}</div>
@@ -826,7 +827,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
     return `<div class="schedule-row" data-id="${t.id}">
       <div>
         <div class="schedule-title">${escapeHtml(t.title)} <span class="badge type">${escapeHtml(t.taskType)}</span></div>
-        <div class="schedule-meta">${escapeHtml(taskSubjectLabel(t))} · ${escapeHtml(recurrenceSummary(t))}${t.notes?" · "+escapeHtml(t.notes):""}</div>
+        <div class="schedule-meta">${escapeHtml(taskSubjectLabel(t))} · ${escapeHtml(recurrenceSummary(t))}${t.notes?" · "+escapeHtml(truncate(t.notes,60)):""}</div>
       </div>
       <div class="schedule-due">${t.nextDue?formatDate(t.nextDue):"—"}${badgeClass?` <span class="badge ${badgeClass}">${bucket==="overdue"?"Overdue":"Due soon"}</span>`:""}</div>
       <div class="schedule-meta">${t.lastCompleted?"Last done "+formatDate(t.lastCompleted):"Never done"}</div>
@@ -852,7 +853,7 @@ import { onAuth, login, logout, watchDoc, saveDoc, uploadFile, listFiles, delete
       </div>
       ${(i.attachments&&i.attachments.length)?`<div class="log-attachments">${i.attachments.map(a=>`<button type="button" class="chip" data-action="open-issue-attachment" data-issue="${i.id}" data-name="${escapeAttr(a.name)}">${escapeHtml(a.originalName||a.name)}</button>`).join("")}</div>`:""}
       <div class="timeline">
-        ${timeline.map(u=>`<div class="timeline-item"><div class="t-date">${formatDate(u.date)}</div><div class="t-note">${escapeHtml(u.note)}</div></div>`).join("") || '<div class="timeline-item"><div class="t-note empty">No updates yet.</div></div>'}
+        ${timeline.map(u=>`<div class="timeline-item"><div class="t-date">${formatDate(u.date)}</div><div class="t-note">${escapeHtml(truncate(u.note))}</div></div>`).join("") || '<div class="timeline-item"><div class="t-note empty">No updates yet.</div></div>'}
       </div>
       <div class="issue-actions">
         <button class="btn small" data-action="add-issue-update" data-id="${i.id}">+ Add update</button>
