@@ -135,6 +135,34 @@
 
   .diagram-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); background:var(--surface); padding:16px; }
 
+  /* ---- Shopping List ---- */
+  .shop-progress{ display:flex; align-items:center; gap:10px; margin-bottom:2px; }
+  .shop-progress .bar-track{ flex:1; height:8px; border-radius:5px; background:var(--accent-soft); overflow:hidden; }
+  .shop-progress .bar-fill{ height:100%; background:var(--accent); border-radius:5px; transition:width .2s ease; }
+  .shop-progress .bar-label{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); white-space:nowrap; }
+
+  .shop-section{ margin-bottom:26px; }
+  .shop-section-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px; }
+  .shop-section-head h3{
+    font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--ink-soft); font-weight:600; margin:0;
+  }
+  .shop-section-head .count{ font-family:var(--mono); font-size:11px; color:var(--ink-soft); font-variant-numeric:tabular-nums; }
+
+  table.shop-table{ width:100%; border-collapse:collapse; font-size:13.5px; background:var(--surface); }
+  table.shop-table td{ padding:9px 10px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.shop-table tr:last-child td{ border-bottom:none; }
+  table.shop-table tr.checked .item-name{ text-decoration:line-through; color:var(--ink-soft); }
+  table.shop-table tr.checked .item-notes{ color:var(--ink-soft); opacity:.7; }
+  .shop-check-cell{ width:34px; text-align:center; }
+  .shop-check-cell input[type="checkbox"]{ width:17px; height:17px; cursor:pointer; accent-color:var(--accent); }
+  .item-name{ font-weight:600; }
+  .item-notes{ font-size:12.5px; color:var(--ink-soft); margin-top:2px; }
+  .item-cost{ font-family:var(--mono); font-size:12px; white-space:nowrap; text-align:right; font-variant-numeric:tabular-nums; color:var(--ink-soft); width:110px; }
+  .item-actions{ width:70px; text-align:right; white-space:nowrap; }
+  .item-actions button{ background:none; border:none; cursor:pointer; color:var(--ink-soft); font-size:13px; padding:2px 4px; }
+  .item-actions button:hover{ color:var(--warn); }
+
   /* ---- Dialog ---- */
   dialog{ border:none; padding:0; border-radius:var(--radius); width:min(560px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
   dialog::backdrop{ background:rgba(20,20,15,0.45); }
@@ -193,6 +221,7 @@
     <nav class="tabs">
       <button class="tab-btn active" data-tab="tab-ideas">Ideas</button>
       <button class="tab-btn" data-tab="tab-stack">Rack Stack</button>
+      <button class="tab-btn" data-tab="tab-shopping">Shopping List</button>
     </nav>
 
     <!-- IDEAS -->
@@ -252,6 +281,25 @@
       <p class="hint">Rack elevation and topology mirror the working schematic in the Obsidian vault. If you change hardware or wiring there, this page gets updated in the same pass.</p>
     </section>
 
+    <!-- SHOPPING LIST -->
+    <section id="tab-shopping" class="tab-panel">
+      <div class="section-title"><h2 style="font-size:17px;">Shopping List</h2><button class="btn primary" data-action="add-part">+ Add item</button></div>
+      <p class="stack-caption">Every device, cable, and print for the build, checked off as it's bought/printed/relocated. Mirrors [[Parts List]] — the full reasoning for each line lives there and in the Rack Stack tab; this is the actionable version.</p>
+
+      <div class="grid stats">
+        <div class="stat-tile"><div class="label">Items</div><div class="value" id="shopStatTotal">0</div></div>
+        <div class="stat-tile"><div class="label">Checked off</div><div class="value" id="shopStatChecked">0</div></div>
+        <div class="stat-tile"><div class="label">Est. total</div><div class="value" style="font-size:17px;" id="shopStatTotalCost">$0</div></div>
+        <div class="stat-tile"><div class="label">Spent so far (min.)</div><div class="value" style="font-size:17px;" id="shopStatSpent">$0</div></div>
+      </div>
+      <div class="shop-progress" style="margin-bottom:24px;">
+        <div class="bar-track"><div class="bar-fill" id="shopProgressBar" style="width:0%;"></div></div>
+        <div class="bar-label" id="shopProgressLabel">0%</div>
+      </div>
+
+      <div id="shoppingSections"></div>
+    </section>
+
     <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. Ideas is a backlog, not a commitment.</footer>
   </div>
 </div>
@@ -297,6 +345,34 @@
     <div class="dialog-actions">
       <button type="button" class="btn ghost" id="ideaCancel">Cancel</button>
       <button type="submit" class="btn primary">Save Idea</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="partDialog">
+  <form id="partForm">
+    <h3>Add Item</h3>
+    <label>Name <input type="text" name="name" required placeholder="e.g. Extra Cat6A keystone jacks"></label>
+    <label>Section
+      <select name="section">
+        <option>Rack structure</option>
+        <option>Networking</option>
+        <option>Compute</option>
+        <option>Storage</option>
+        <option>Smart-home hubs</option>
+        <option>Display / telemetry / lighting</option>
+        <option>Power</option>
+        <option>Print materials</option>
+      </select>
+    </label>
+    <div class="two-col">
+      <label>Cost, low ($) <input type="number" name="costLow" min="0" step="0.01" placeholder="0"></label>
+      <label>Cost, high ($) <input type="number" name="costHigh" min="0" step="0.01" placeholder="0"></label>
+    </div>
+    <label>Notes <textarea name="notes" placeholder="Model, source, why it's needed…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="partCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Item</button>
     </div>
   </form>
 </dialog>
@@ -406,12 +482,92 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  MM == "HDMI/USB extender" ==> DESK["Desk<br/>daily use"]'
   ].join("\n");
 
+  const SHOP_SECTIONS = ["Rack structure","Networking","Compute","Storage","Smart-home hubs","Display / telemetry / lighting","Power","Print materials"];
+
+  // costLow/costHigh in dollars, null when not a real one-time dollar cost (recurring, TBD, $0 config/software).
+  const SEED_PARTS = [
+    // Rack structure
+    {id:"rack-frame", section:"Rack structure", name:"KWS Rack frame, 18U, 10\"", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG — columns/rails."},
+    {id:"rack-shelves", section:"Rack structure", name:"Shelves — OpenGrid Heavy Duty Shelf (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Reused for mini PCs, gateway+switch, hub-tray base."},
+    {id:"rack-sidewalls", section:"Rack structure", name:"Sidewalls — Sidewall for KWS Rack (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Honeycomb, not solid — real passive airflow."},
+    {id:"rack-top", section:"Rack structure", name:"Top panel — Honeycomb top panel (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Finishing cap, matches sidewalls."},
+    {id:"rack-cablemgmt", section:"Rack structure", name:"Cable management mounts (Makerworld, C1/C2/L1/L2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Print several — L1/L2 are for the LED strip wiring specifically."},
+    {id:"rack-magnets", section:"Rack structure", name:"Patch panel magnets, 24× 6mm round", costLabel:"$8-12", costLow:8, costHigh:12, notes:"For the magnetic label system — grab the post-fix print file version."},
+    {id:"rack-trays", section:"Rack structure", name:"Custom trays/faceplates, labels", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PLA — cosmetic, better finish."},
+    {id:"rack-intakefan", section:"Rack structure", name:"Intake fan filter media/mesh", costLabel:"$15-20", costLow:15, costHigh:20, notes:"Removable/cleanable."},
+    {id:"rack-fans", section:"Rack structure", name:"120mm-class fans ×2-4", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Quiet, low-RPM — office noise budget."},
+    {id:"rack-fancontroller", section:"Rack structure", name:"Fan controller (PWM, temp-driven)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Off the same sensor feeding the telemetry screen."},
+
+    // Networking
+    {id:"net-ucgmax", section:"Networking", name:"UniFi Cloud Gateway Max (UCG-Max-NS)", costLabel:"$199", costLow:199, costHigh:199, notes:"WAN1 fiber, WAN2 = 5G backup."},
+    {id:"net-switch", section:"Networking", name:"UniFi Flex 2.5G PoE switch", costLabel:"$199", costLow:199, costHigh:199, notes:"USW-Flex-2.5G-8-PoE, in-rack."},
+    {id:"net-aps", section:"Networking", name:"Access points ×3 (UniFi U7 Pro)", costLabel:"$189 ea → $567", costLow:567, costHigh:567, notes:"Wireless mesh backhaul, WiFi 7."},
+    {id:"net-cat6a", section:"Networking", name:"Cat6A cable", costLabel:"$80-120", costLow:80, costHigh:120, notes:"Office/rack drops only."},
+    {id:"net-keystones", section:"Networking", name:"Keystone jacks (Cat6A)", costLabel:"$25-40", costLow:25, costHigh:40, notes:""},
+    {id:"net-patchpanel", section:"Networking", name:"Patch panel, 12-port", costLabel:"$25-35", costLow:25, costHigh:35, notes:""},
+    {id:"net-patchcables", section:"Networking", name:"Patch cables ×8-10", costLabel:"$50-70", costLow:50, costHigh:70, notes:"Factory-terminated."},
+    {id:"net-wallplates", section:"Networking", name:"Wall plates, dual-gang", costLabel:"$10-20", costLow:10, costHigh:20, notes:""},
+    {id:"net-gwshelf", section:"Networking", name:"Custom shelf for gateway + switch", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Shared 1U shelf, PETG."},
+    {id:"net-5gbackup", section:"Networking", name:"UniFi 5G Backup", costLabel:"$99", costLow:99, costHigh:99, notes:"WAN2 failover — replaces the ruled-out Huawei unit."},
+    {id:"net-simdata", section:"Networking", name:"5G backup SIM / data plan", costLabel:"Recurring — TBD", costLow:null, costHigh:null, notes:"Confirm carrier + signal test at the rack location first."},
+
+    // Compute
+    {id:"comp-pi5", section:"Compute", name:"Raspberry Pi 5 (8GB) — for Home Assistant", costLabel:"$80", costLow:80, costHigh:80, notes:"HAOS bare metal."},
+    {id:"comp-usbssd", section:"Compute", name:"USB SSD, 128-256GB", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Boot from this, not microSD."},
+    {id:"comp-clusterbay", section:"Compute", name:"Rack Snap-in Cluster Bay, 8-bay (Makerworld, Option 2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"2U. Slot 1 = HA Pi, 7 spare."},
+    {id:"comp-meanwell", section:"Compute", name:"Mean Well LRS-200-5 power brick + PDU", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Feeds the whole cluster bay from one outlet."},
+    {id:"comp-ptfix", section:"Compute", name:"PTFIX power distributors ×2", costLabel:"$15-30", costLow:15, costHigh:30, notes:"PDU → each carrier."},
+    {id:"comp-bayfans", section:"Compute", name:"40mm fans ×4 (cluster bay cooling)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Targeted cooling at the boards."},
+    {id:"comp-minipc2", section:"Compute", name:"Mini PC #2 (services)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"N100/N305-class, x86. Docker/Grafana/backlog host."},
+    {id:"comp-macmini", section:"Compute", name:"Mac Mini", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Existing hardware — personal/creative box, not a service host."},
+    {id:"comp-extender", section:"Compute", name:"HDMI/USB extender to desk", costLabel:"$50-150", costLow:50, costHigh:150, notes:"Daily interactive use for the Mac Mini."},
+    {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×3", costLabel:"$103 ea → $309", costLow:309, costHigh:309, notes:"One per compute box (HA Pi, Mini PC 2, Mac Mini)."},
+
+    // Storage
+    {id:"stor-hddmount", section:"Storage", name:"10\" Rack 1U 2×3.5\" HDD Mount (Makerworld, Flying4T)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG/ABS, not PLA — real airflow needed."},
+    {id:"stor-usbdock", section:"Storage", name:"StarTech dual-bay USB-to-SATA dock", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Bare bridge board, no case — macOS software RAID1."},
+    {id:"stor-drives", section:"Storage", name:"2× 4TB drives, mirrored (e.g. WD Red Plus)", costLabel:"$200 ea → $400", costLow:400, costHigh:400, notes:"Under-2TB library — real headroom."},
+
+    // Smart-home hubs
+    {id:"smart-hue", section:"Smart-home hubs", name:"Philips Hue Bridge", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate into the smart-hub tray."},
+    {id:"smart-ring", section:"Smart-home hubs", name:"Ring Alarm base station", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate."},
+    {id:"smart-smartthings", section:"Smart-home hubs", name:"SmartThings hub", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate."},
+    {id:"smart-bhyve", section:"Smart-home hubs", name:"B-hyve sprinkler hub", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate."},
+    {id:"smart-tray", section:"Smart-home hubs", name:"Custom tray with per-device cutouts", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PLA, ventilated — 1U."},
+
+    // Display / telemetry / lighting
+    {id:"disp-screenmodule", section:"Display / telemetry / lighting", name:"Screen module, 2U (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Bundles display, OLED, Pi mount, button, keystones."},
+    {id:"disp-ipsdisplay", section:"Display / telemetry / lighting", name:"7.84\" IPS bar display + driver (Wisecoco)", costLabel:"$45-55", costLow:45, costHigh:55, notes:"Order the FRAMELESS version."},
+    {id:"disp-oled", section:"Display / telemetry / lighting", name:"Secondary OLED, 0.91\" (SSD1306/I2C)", costLabel:"$1-2", costLow:1, costHigh:2, notes:""},
+    {id:"disp-pi4b", section:"Display / telemetry / lighting", name:"Raspberry Pi 4B (4GB)", costLabel:"$55-65", costLow:55, costHigh:65, notes:"Drives the screen module — kiosk Chromium."},
+    {id:"disp-microsd", section:"Display / telemetry / lighting", name:"MicroSD card, 32-64GB", costLabel:"$10-15", costLow:10, costHigh:15, notes:"For the screen module's Pi — fine for a kiosk browser."},
+    {id:"disp-button", section:"Display / telemetry / lighting", name:"12mm power button", costLabel:"$3-5", costLow:3, costHigh:5, notes:""},
+    {id:"disp-keystoneinserts", section:"Display / telemetry / lighting", name:"Keystone port inserts ×2 (or blanks)", costLabel:"$5-10", costLow:5, costHigh:10, notes:""},
+    {id:"disp-ledmatrix", section:"Display / telemetry / lighting", name:"LED matrix (WLED-compatible)", costLabel:"$25-40", costLow:25, costHigh:40, notes:""},
+    {id:"disp-ledstrip", section:"Display / telemetry / lighting", name:"Addressable LED strip (WS2812B/SK6812)", costLabel:"$20-30", costLow:20, costHigh:30, notes:"WLED-controlled accent lighting."},
+    {id:"disp-wledcontroller", section:"Display / telemetry / lighting", name:"Extra small WLED controller", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Only if the matrix's controller has no spare channel."},
+    {id:"disp-tasklight", section:"Display / telemetry / lighting", name:"Task light (battery/USB puck)", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Plain work light for maintenance."},
+    {id:"disp-tempsensor", section:"Display / telemetry / lighting", name:"Temp/humidity sensor (rack-internal)", costLabel:"$15-30", costLow:15, costHigh:30, notes:"ESPHome/ESP32 — feeds HA, fan PWM, and Grafana."},
+
+    // Power
+    {id:"power-strips", section:"Power", name:"2× power strips (16 outlets total), UL-listed", costLabel:"$40-60", costLow:40, costHigh:60, notes:"Wall-mounted outside the rack."},
+    {id:"power-12vsupply", section:"Power", name:"In-rack 12V DC supply", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Fan supply + cable pass-through, 2U."},
+    {id:"power-ups", section:"Power", name:"UPS", costLabel:"$150-250", costLow:150, costHigh:250, notes:"Outside the rack. Gateway/switch/5G backup must be on battery-backed outlets."},
+    {id:"power-nut", section:"Power", name:"NUT integration (software)", costLabel:"$0 — software", costLow:0, costHigh:0, notes:"Clean shutdown on extended outages."},
+    {id:"power-alarm", section:"Power", name:"UPS audible alarm — muted", costLabel:"$0 — config", costLow:0, costHigh:0, notes:"Office location — rely on app/HA alerts instead."},
+
+    // Print materials
+    {id:"print-petg", section:"Print materials", name:"PETG filament, ~2-3kg", costLabel:"$60-90", costLow:60, costHigh:90, notes:"Frame + heat-adjacent shelves."},
+    {id:"print-pla", section:"Print materials", name:"PLA filament, ~1-2kg", costLabel:"$25-50", costLow:25, costHigh:50, notes:"Cosmetic panels, trays, labels — base color."},
+    {id:"print-pla2", section:"Print materials", name:"PLA filament, 2nd color", costLabel:"$20-25", costLow:20, costHigh:25, notes:"For two-tone labels/nameplates (AMS)."}
+  ];
+
   const qs = (s,r)=> (r||document).querySelector(s);
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const escapeAttr = escapeHtml;
 
-  let state = { version:1, updatedAt:0, ideas:[] };
+  let state = { version:1, updatedAt:0, ideas:[], partsChecked:{}, customParts:[] };
   let currentUser = null;
   let saveTimer = null;
   let pendingSave = false;
@@ -429,12 +585,16 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e)).finally(()=>{ pendingSave = false; });
     }, 350);
   }
-  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[] }; }
+  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[], partsChecked:{}, customParts:[] }; }
   function normalizeState(s){
     if(!s.ideas) s.ideas = [];
+    if(!s.partsChecked) s.partsChecked = {};
+    if(!s.customParts) s.customParts = [];
     s.ideas.forEach(i=>{ if(!i.status) i.status = "Idea"; if(!i.priority) i.priority = "Medium"; });
     return s;
   }
+
+  function getAllPartItems(){ return SEED_PARTS.concat(state.customParts); }
 
   async function onDataSnapshot(data, isLocalEcho){
     if(isLocalEcho) return;
@@ -444,6 +604,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     saveLocal();
     renderIdeas();
     renderStack();
+    renderShopping();
   }
 
   bindAuthUI({
@@ -542,6 +703,85 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     }
   }
 
+  function formatMoney(n){ return "$" + Math.round(n).toLocaleString("en-US"); }
+
+  function renderShopping(){
+    const items = getAllPartItems();
+    const checkedIds = state.partsChecked;
+
+    const total = items.length;
+    const checkedCount = items.filter(it => checkedIds[it.id]).length;
+    const totalLow = items.reduce((a,it)=> a + (it.costLow||0), 0);
+    const totalHigh = items.reduce((a,it)=> a + (it.costHigh||0), 0);
+    const spent = items.filter(it => checkedIds[it.id]).reduce((a,it)=> a + (it.costLow||0), 0);
+    const pct = total ? Math.round((checkedCount/total)*100) : 0;
+
+    qs("#shopStatTotal").textContent = total;
+    qs("#shopStatChecked").textContent = checkedCount;
+    qs("#shopStatTotalCost").textContent = totalLow===totalHigh ? formatMoney(totalLow) : formatMoney(totalLow)+"–"+formatMoney(totalHigh);
+    qs("#shopStatSpent").textContent = formatMoney(spent);
+    qs("#shopProgressBar").style.width = pct + "%";
+    qs("#shopProgressLabel").textContent = pct + "% (" + checkedCount + "/" + total + ")";
+
+    qs("#shoppingSections").innerHTML = SHOP_SECTIONS.map(sectionName => {
+      const rows = items.filter(it => it.section === sectionName);
+      if(!rows.length) return "";
+      const doneCount = rows.filter(it => checkedIds[it.id]).length;
+      const isCustom = id => state.customParts.some(p=>p.id===id);
+      return `<div class="shop-section">
+        <div class="shop-section-head">
+          <h3>${escapeHtml(sectionName)}</h3>
+          <span class="count">${doneCount}/${rows.length}</span>
+        </div>
+        <div class="stack-table-wrap">
+          <table class="shop-table">
+            <tbody>
+              ${rows.map(it => `
+                <tr class="${checkedIds[it.id] ? "checked" : ""}" data-id="${escapeAttr(it.id)}">
+                  <td class="shop-check-cell"><input type="checkbox" data-action="toggle-part" data-id="${escapeAttr(it.id)}" ${checkedIds[it.id] ? "checked" : ""}></td>
+                  <td>
+                    <div class="item-name">${escapeHtml(it.name)}</div>
+                    ${it.notes ? `<div class="item-notes">${escapeHtml(it.notes)}</div>` : ""}
+                  </td>
+                  <td class="item-cost">${escapeHtml(it.costLabel)}</td>
+                  <td class="item-actions">${isCustom(it.id) ? `<button data-action="delete-part" data-id="${escapeAttr(it.id)}" title="Delete">✕</button>` : ""}</td>
+                </tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`;
+    }).join("");
+  }
+
+  const partDialog = qs("#partDialog");
+  function openPartDialog(){
+    qs("#partForm").reset();
+    partDialog.showModal();
+  }
+  qs("#partForm").addEventListener("submit", (ev)=>{
+    ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
+    const fd = new FormData(ev.target);
+    const costLow = fd.get("costLow") ? Number(fd.get("costLow")) : 0;
+    const costHigh = fd.get("costHigh") ? Number(fd.get("costHigh")) : costLow;
+    const costLabel = costLow || costHigh
+      ? (costLow===costHigh ? "$"+costLow : "$"+costLow+"-"+costHigh)
+      : "—";
+    const item = {
+      id: uid(),
+      section: fd.get("section"),
+      name: (fd.get("name")||"").trim(),
+      costLabel, costLow, costHigh,
+      notes: (fd.get("notes")||"").trim()
+    };
+    state.customParts.push(item);
+    state.partsChecked[item.id] = false;
+    persist();
+    renderShopping();
+    partDialog.close();
+  });
+  qs("#partCancel").addEventListener("click", ()=> partDialog.close());
+
   const ideaDialog = qs("#ideaDialog");
   function openIdeaDialog(id){
     const form = qs("#ideaForm");
@@ -591,6 +831,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       btn.classList.add("active");
       qs("#"+btn.dataset.tab).classList.add("active");
       if(btn.dataset.tab === "tab-stack") renderStack();
+      if(btn.dataset.tab === "tab-shopping") renderShopping();
     });
   });
 
@@ -607,6 +848,21 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       state.ideas = state.ideas.filter(i=>i.id!==id);
       persist();
       renderIdeas();
+    }
+    if(action==="add-part") openPartDialog();
+    if(action==="toggle-part"){
+      if(!currentUser){ alert("You're signed out — sign in before checking items off."); btn.checked = !btn.checked; return; }
+      state.partsChecked[id] = !!btn.checked;
+      persist();
+      renderShopping();
+    }
+    if(action==="delete-part"){
+      if(!currentUser){ alert("You're signed out — sign in before deleting."); return; }
+      if(!confirm("Delete this item?")) return;
+      state.customParts = state.customParts.filter(p=>p.id!==id);
+      delete state.partsChecked[id];
+      persist();
+      renderShopping();
     }
   });
 
