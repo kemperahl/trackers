@@ -253,9 +253,9 @@
 
       <div class="grid stats">
         <div class="stat-tile"><div class="label">Rack size</div><div class="value">18U</div></div>
-        <div class="stat-tile"><div class="label">Headroom</div><div class="value">3U</div></div>
+        <div class="stat-tile"><div class="label">Headroom</div><div class="value">1U</div></div>
         <div class="stat-tile"><div class="label">Location</div><div class="value" style="font-size:18px;">Office</div></div>
-        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$2.9–3.7k</div></div>
+        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$3.0–3.7k</div></div>
       </div>
 
       <div class="stack-section">
@@ -392,17 +392,17 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
 
   const ELEVATION = [
     { u:"18", name:"Exhaust fan panel", cat:"cooling", notes:"Rear/top, PWM, temp-driven off rack sensor" },
-    { u:"15–17", name:"Spare (3U)", cat:"spare", notes:"Mac Mini removed from the rack entirely (2026-07-28) — backs up remotely over the network instead of running HDMI/USB two floors. Freed its 1U on top of the existing 2U spare." },
-    { u:"13–14", name:"Screen module (Makerworld 2U print)", cat:"display", notes:"7.84″ IPS bar display (frameless!) + 0.91″ OLED + its own Raspberry Pi, all in one printed module" },
-    { u:"12", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status" },
-    { u:"10–11", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
-    { u:"9", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
-    { u:"8", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout" },
-    { u:"7", name:"JetKVM shelf (×2)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2) — the NAS Pi skips JetKVM (web/SSH-only), and the Mac Mini no longer needs one since it's not in the rack" },
-    { u:"6", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86. Lab VLAN — deliberately not where the NAS drives live" },
-    { u:"3–4", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Pi 5, HAOS. Slot 2: Pi 4, OpenMediaVault + ZFS-mirrored NAS (2×2TB 2.5\", Trusted VLAN). 6 slots spare — shared Mean Well supply means new nodes don't need new outlets" },
+    { u:"17", name:"Spare (1U)", cat:"spare", notes:"Down from 3U — most of the Mac Mini's freed space went to the Synology's shelf, still 1U better off than before the Mac Mini was removed" },
+    { u:"15–16", name:"Screen module (Makerworld 2U print)", cat:"display", notes:"7.84″ IPS bar display (frameless!) + 0.91″ OLED + its own Raspberry Pi, all in one printed module" },
+    { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status" },
+    { u:"12–13", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
+    { u:"11", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
+    { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout" },
+    { u:"9", name:"JetKVM shelf (×2)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2) — the Synology skips JetKVM (its own DSM web admin), and the Mac Mini no longer needs one since it's not in the rack" },
+    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86. Lab VLAN" },
+    { u:"6–7", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Pi 5, HAOS. 7 slots spare (back up from 6 — the NAS Pi reverted to a proper Synology) — shared Mean Well supply means new nodes don't need new outlets" },
     { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve — compressed to 1U, tighter single-row cutout layout" },
-    { u:"2", name:"4-bay hot-swap cage, 1U (2.5″ SSD) — all NAS Pi", cat:"storage", notes:"Nautilus Forge design. 4×2TB SSD, all feeding the NAS Pi (2 mirrored ZFS vdevs, striped — ~4TB usable). Mac Mini's local pair folded in here 2026-07-28 once it left the rack — now the NAS Pi is a remote SMB/Time Machine backup target instead of a locally-attached RAID" },
+    { u:"2–4", name:"Synology NAS, 2-bay (on its side)", cat:"storage", notes:"DS223/DS224+, 2× NAS-rated HDD mirrored — reverted 2026-07-28 from the Pi/OMV/ZFS-over-USB path (USB-SATA bridges can silently fail to honor write-flush commands, risking pool corruption). Time Machine + Lightroom backup target for the Mac Mini (remote, over SMB) + general multi-device storage. Custom-printed shelf/cradle, mounted low for stability" },
     { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" }
   ];
   // Sort by top U number descending for display (bottom->top storage order, shown top-first)
@@ -416,7 +416,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Cat6A patch panel", "Office/rack drops only."]
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
-      ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the NAS Pi (cluster bay slot 2). → HA (8123/443): allow. → Lab: allow."],
+      ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS. → HA (8123/443): allow. → Lab: allow."],
       ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, the HA Pi (cluster bay slot 1). → Internet: allow. → Trusted: block."],
       ["Lab", "Mini PC 2, future cluster bay nodes by default. → Internet: allow. → Trusted: block."],
       ["Guest", "Visitor WiFi. → everything but Internet: block."],
@@ -427,15 +427,6 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Location", "Slot 1 of the 8-bay Pi cluster snap-in bay."],
       ["Runs", "Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client."]
     ]},
-    { title:"Compute — Raspberry Pi 4 (NAS)", rows:[
-      ["Added", "2026-07-28 — multi-device file access (Windows/Mac/iPhone) without drafting the Mac Mini into file-server duty, and without putting the drives on Mini PC 2's Lab VLAN where they'd share a blast radius with open-ended Docker experiments."],
-      ["OS", "OpenMediaVault, bare metal. Samba (SMB) — natively reachable from Windows, macOS Finder, and iOS Files with no extra app."],
-      ["Storage", "Revised 2026-07-28: 4× 2TB 2.5\" SSD (up from 2), two mirrored ZFS vdevs striped — ~4TB usable, tolerates a drive failure in each vdev. Absorbed the Mac Mini's former local pair once the Mac Mini left the rack entirely — this Pi is now that backup's remote target over SMB, not a locally-attached RAID. Bit-rot checksumming via ZFS, a real step up from plain RAID1 for irreplaceable files. Lives in the shared hot-swap cage at U2, not the cluster bay itself — see Storage below."],
-      ["Location", "Compute node in slot 2 of the 8-bay Pi cluster snap-in bay, same shared Mean Well power as the HA Pi."],
-      ["Network", "Trusted VLAN — the entire reason this is a separate Pi rather than a share on Mini PC 2."],
-      ["Admin", "Web UI / SSH only — no JetKVM, unlike the other compute boxes."],
-      ["Throughput ceiling", "Pi's onboard NIC is Gigabit, not 2.5G — fine for general file access and Time Machine, a real limit for large video work."]
-    ]},
     { title:"Compute — Mini PC 2 (Services)", rows:[
       ["OS", "Plain Debian/Ubuntu Server."],
       ["Container platform", "Docker + Docker Compose + Portainer."],
@@ -444,12 +435,12 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     { title:"Compute — Mac Mini (personal/creative)", rows:[
       ["OS", "macOS, unchanged daily use — Lightroom/Photoshop."],
       ["Location", "Revised 2026-07-28: out of the rack entirely. Sits at the desk like a normal computer — no HDMI/USB extender, no JetKVM, no rack U consumed. Running an extender two floors up to the rack stopped making sense once remote network backup was the alternative."],
-      ["Storage", "Local internal drive for the active Lightroom library — no more locally-attached external RAID. Time Machine now points at the NAS Pi over the network (SMB) instead of a direct-attached mirror. Worth confirming the Mac Mini's internal drive has enough headroom for the active library now that it can't lean on local external storage day-to-day."],
-      ["Backup", "Time Machine → NAS Pi (network, from the office). Off-site: Backblaze (or similar) still covers the Mac Mini's internal drive as part of whole-machine backup."]
+      ["Storage", "Local internal drive for the active Lightroom library — no more locally-attached external RAID. Time Machine now points at the Synology NAS over the network (SMB) instead of a direct-attached mirror. Worth confirming the Mac Mini's internal drive has enough headroom for the active library now that it can't lean on local external storage day-to-day."],
+      ["Backup", "Time Machine → Synology NAS (network, from the office). Off-site: Backblaze (or similar) still covers the Mac Mini's internal drive as part of whole-machine backup."]
     ]},
     { title:"Pi Cluster Bay", rows:[
       ["Hardware", "8-bay snap-in system (Option 2, Power + Cooling Extension)."],
-      ["Occupancy", "Slot 1: the HA Pi. Slot 2: the NAS Pi. 6 spare slots — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
+      ["Occupancy", "Slot 1: the HA Pi. 7 spare slots (back up from 6 — the NAS Pi that briefly occupied slot 2 reverted to a proper Synology) — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
       ["Power", "Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips."]
     ]},
     { title:"Screen Module (rack telemetry)", rows:[
@@ -457,11 +448,12 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["OS / software", "Raspberry Pi OS Lite, Chromium in kiosk mode pointed at Grafana (hosted on Mini PC 2)."],
       ["Secondary OLED", "Runs directly off the Pi's own GPIO/I2C — shows IP/uptime/CPU even if the kiosk browser hangs."]
     ]},
-    { title:"Storage", rows:[
-      ["Mount", "1U 4-bay hot-swap cage (Nautilus Forge design). Revised 2026-07-28: all 4 drives now feed the NAS Pi — no longer split between the Mac Mini and the NAS Pi, since the Mac Mini left the rack entirely."],
-      ["NAS Pi array", "4×2TB 2.5\" SSD, two mirrored ZFS vdevs striped (~4TB usable) — 2 dual-bay USB-SATA docks (bare bridge boards) feeding the NAS Pi. Serves both general multi-device storage and the Mac Mini's remote Time Machine/Lightroom backup over SMB."],
-      ["Extra hardware needed", "Refurbished Dell PowerEdge 08FKXC drive caddies ×4 and SATA hot-swap pigtail converters — both AliExpress, not part of the print, real shipping lead time."],
-      ["Standalone NAS appliance", "Considered (Synology) but doesn't physically fit — even on its side, a 2-bay unit needs ~3U, more than the spare headroom available."]
+    { title:"Storage — Synology NAS (reverted 2026-07-28)", rows:[
+      ["Why reverted", "Went Synology → cut → Pi/OpenMediaVault/ZFS-over-USB → back to Synology, all the same day. The DIY path's real weakness: USB-SATA bridge boards can silently fail to honor write-flush commands, risking ZFS pool corruption on power loss — exactly what ZFS was chosen to prevent. The original \"doesn't fit\" objection to Synology is gone now that the Mac Mini's departure freed enough rack space."],
+      ["Model", "DS223 or DS224+, 2-bay. DS224+ if you want Synology Photos face/object indexing without bogging down; DS223 if it's just storage + Time Machine."],
+      ["Drives", "2× NAS-rated 3.5\" HDD (e.g. WD Red Plus), mirrored. Back to spinning, not 2.5\" SSD — the SSD choice only existed to dodge the DIY printed-mount snapping risk, moot with no printed cage at all. 4TB minimum; consider 6-8TB now that it covers general storage too, not just photo backup."],
+      ["Serves", "The Mac Mini's remote Time Machine/Lightroom backup (over SMB, now that the Mac Mini isn't in the rack) + general multi-device storage for Windows/Mac/iPhone — one appliance covers both roles the Pi was splitting."],
+      ["Mount", "Custom-printed shelf/cradle — desktop unit, not natively rack-mount, same situation as the UniFi gear. ~3U on its side."]
     ]},
     { title:"Smart Home Hubs (relocated, not new)", rows:[
       ["Hue Bridge · Ring Alarm base · SmartThings hub · B-hyve hub", "Physically moved into the rack's smart-hub tray, integrated into Home Assistant."]
@@ -489,10 +481,9 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  AP1 -.-> AP2["AP 2"]',
     '  AP2 -.-> AP3["AP 3"]',
     '  SW --> PI["HA Pi<br/>cluster bay, slot 1 · IoT VLAN"]',
-    '  SW --> NAS["NAS Pi<br/>cluster bay, slot 2 · Trusted VLAN"]',
+    '  SW --> NAS["Synology NAS, 2-bay<br/>DS223/DS224+ · Trusted VLAN"]',
     '  SW --> PC2["Mini PC 2<br/>Services · Lab VLAN"]',
     '  MM["Mac Mini<br/>personal/creative · Trusted VLAN<br/>NOT in the rack — desk, network client only"] -. "SMB, remote backup" .-> NAS',
-    '  NAS --- NASDR["4-bay hot-swap cage<br/>4x2TB SSD, ZFS mirror (2 vdevs)"]',
     '  NAS -. "SMB" .-> WIN["Windows"]',
     '  NAS -. "SMB" .-> MAC["Mac"]',
     '  NAS -. "SMB" .-> IOS["iPhone"]',
@@ -532,23 +523,20 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     // Compute
     {id:"comp-pi5", section:"Compute", name:"Raspberry Pi 5 (8GB) — for Home Assistant", costLabel:"$80", costLow:80, costHigh:80, notes:"HAOS bare metal."},
     {id:"comp-usbssd", section:"Compute", name:"USB SSD, 128-256GB", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Boot from this, not microSD."},
-    {id:"comp-naspi", section:"Compute", name:"Raspberry Pi 4 (4GB) — dedicated NAS node", costLabel:"$55-65", costLow:55, costHigh:65, notes:"Cluster bay slot 2. OpenMediaVault + ZFS, Samba. Trusted VLAN, not Lab. Pi 4 not 5 — bottleneck is the Gigabit NIC either way. No JetKVM — web/SSH admin only."},
-    {id:"comp-clusterbay", section:"Compute", name:"Rack Snap-in Cluster Bay, 8-bay (Makerworld, Option 2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"2U. Slot 1 = HA Pi, slot 2 = NAS Pi, 6 spare."},
+    {id:"comp-naspi", section:"Compute", name:"~~Raspberry Pi 4 (4GB) — dedicated NAS node~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"Reverted 2026-07-28 back to a proper Synology NAS (see Storage) — a real reliability call: USB-SATA bridge boards can silently fail to honor write-flush commands, risking ZFS pool corruption on power loss."},
+    {id:"comp-clusterbay", section:"Compute", name:"Rack Snap-in Cluster Bay, 8-bay (Makerworld, Option 2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"2U. Slot 1 = HA Pi, 7 spare (up from 6 — the NAS Pi reverted to Synology)."},
     {id:"comp-meanwell", section:"Compute", name:"Mean Well LRS-200-5 power brick + PDU", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Feeds the whole cluster bay from one outlet."},
     {id:"comp-ptfix", section:"Compute", name:"PTFIX power distributors ×2", costLabel:"$15-30", costLow:15, costHigh:30, notes:"PDU → each carrier."},
     {id:"comp-bayfans", section:"Compute", name:"40mm fans ×4 (cluster bay cooling)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Targeted cooling at the boards."},
     {id:"comp-minipc2", section:"Compute", name:"Mini PC #2 (services)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"N100/N305-class, x86. Docker/Grafana/backlog host."},
     {id:"comp-macmini", section:"Compute", name:"Mac Mini", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Existing hardware — personal/creative box, not a service host. Revised 2026-07-28: lives at the desk, not in the rack at all — no extender, no JetKVM, no rack U."},
-    {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×2", costLabel:"$103 ea → $206", costLow:206, costHigh:206, notes:"One per compute box (HA Pi, Mini PC 2) — not the NAS Pi (web/SSH only) and not the Mac Mini (not in the rack as of 2026-07-28)."},
+    {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×2", costLabel:"$103 ea → $206", costLow:206, costHigh:206, notes:"One per compute box (HA Pi, Mini PC 2) — not the Synology (its own DSM web admin) and not the Mac Mini (not in the rack as of 2026-07-28)."},
 
-    // Storage — revised 2026-07-28 (v2): Mac Mini out of the rack entirely, so all 4 bays now feed the NAS Pi alone
-    {id:"stor-cage", section:"Storage", name:"10 inch Rack 1U 4x 2.5\" HDD/SSD - HOT SWAP (Makerworld, Nautilus Forge)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"1U, genuinely hot-swap, angled SATA mounts. No supports, print face-down. All 4 bays now feed the NAS Pi alone — the Mac Mini left the rack entirely 2026-07-28."},
-    {id:"stor-caddies", section:"Storage", name:"Dell PowerEdge 08FKXC drive caddies ×4", costLabel:"$15-30", costLow:15, costHigh:30, notes:"Refurbished, AliExpress — designer's specific recommendation, not printed. Real shipping lead time."},
-    {id:"stor-pigtails", section:"Storage", name:"SATA hot-swap pigtail converters (22-pin) ×4+", costLabel:"$5-10", costLow:5, costHigh:10, notes:"AliExpress, sold in sets of 5."},
-    {id:"stor-nasdock1", section:"Storage", name:"USB-to-SATA dual-bay dock #1 (NAS Pi)", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Bare bridge board, no case — feeds the first mirrored vdev."},
-    {id:"stor-nasdock2", section:"Storage", name:"USB-to-SATA dual-bay dock #2 (NAS Pi)", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Feeds the second mirrored vdev — both docks land on the NAS Pi now, not split with the Mac Mini."},
-    {id:"stor-nasdrives1", section:"Storage", name:"2× 2TB 2.5\" SSD, mirrored (NAS Pi, vdev 1 — Mac Mini remote backup)", costLabel:"$120-160 ea → $240-320", costLow:240, costHigh:320, notes:"Serves the Mac Mini's Time Machine/Lightroom backup over SMB, now that the Mac Mini itself isn't in the rack. Was the Mac Mini's own local pair before the 2026-07-28 revision."},
-    {id:"stor-nasdrives2", section:"Storage", name:"2× 2TB 2.5\" SSD, mirrored (NAS Pi, vdev 2 — general storage)", costLabel:"$120-160 ea → $240-320", costLow:240, costHigh:320, notes:"Revised 2026-07-28 from spinning HDD to SSD — with the Mac Mini's backup now sharing this Pi, SSD across all 4 bays is simpler and more consistent than mixing SSD/HDD for a modest price difference at 2TB."},
+    // Storage — reverted 2026-07-28 (v3): back to a proper Synology NAS, not the Pi/OMV/ZFS-over-USB path
+    {id:"stor-cage", section:"Storage", name:"~~4-bay hot-swap cage + caddies + pigtails + docks (DIY path)~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"No longer needed — a real NAS has its own internal drive bays."},
+    {id:"stor-synology", section:"Storage", name:"Synology NAS, 2-bay", costLabel:"$260-500", costLow:260, costHigh:500, notes:"DS223 (~$260-300) if it's just storage + Time Machine, or DS224+ (~$500, recent pricing's run higher) if you want Synology Photos face/object indexing without bogging down — this now handles more varied traffic than just Time Machine. Pick one, not both."},
+    {id:"stor-drives", section:"Storage", name:"2× 4TB NAS-rated HDD, mirrored (e.g. WD Red Plus)", costLabel:"$200 ea → $400", costLow:400, costHigh:400, notes:"Back to 3.5\" spinning, not 2.5\" SSD — the SSD choice existed only to dodge the DIY printed-mount snapping risk, moot with no printed cage. Consider 6-8TB for headroom now that this covers general storage too, not just photo backup."},
+    {id:"stor-shelf", section:"Storage", name:"Custom-printed shelf/cradle", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Desktop unit, not natively rack-mount, same situation as the UniFi gear — needs ~3U mounted on its side."},
 
     // Smart-home hubs
     {id:"smart-hue", section:"Smart-home hubs", name:"Philips Hue Bridge", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate into the smart-hub tray."},
