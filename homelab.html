@@ -20,6 +20,7 @@
     --cat-network:#3d6f96; --cat-network-bg:#e0e9ee;
     --cat-display:#2f8f8a; --cat-display-bg:#dfefed;
     --cat-spare:#9a9488;   --cat-spare-bg:#ecebe6;
+    --cat-power:#b8703a;   --cat-power-bg:#f2e4d8;
   }
   @media (prefers-color-scheme: dark){
     :root{
@@ -34,6 +35,7 @@
       --cat-network:#85b3d6; --cat-network-bg:#1c2731;
       --cat-display:#6fd0ca; --cat-display-bg:#17282a;
       --cat-spare:#7d7a72;   --cat-spare-bg:#242320;
+      --cat-power:#e0954f;   --cat-power-bg:#2c2116;
     }
   }
   *{ box-sizing:border-box; }
@@ -125,6 +127,7 @@
   .cat-network{ background:var(--cat-network-bg); color:var(--cat-network); }
   .cat-display{ background:var(--cat-display-bg); color:var(--cat-display); }
   .cat-spare{ background:var(--cat-spare-bg); color:var(--cat-spare); }
+  .cat-power{ background:var(--cat-power-bg); color:var(--cat-power); }
 
   .stack-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 2px 28px; }
   .stack-legend span{ display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--ink-soft); }
@@ -309,23 +312,23 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   const DOC_PATH = "trackers/homelab";
   const CATEGORIES = ["Media","Photos","Productivity","Home Automation","Monitoring / Dev Tools","Networking","Fun / Games","Other"];
 
-  const CAT_LABELS = { network:"Network", compute:"Compute", storage:"Storage", smart:"Smart Home", display:"Display", cooling:"Cooling", spare:"Spare" };
+  const CAT_LABELS = { network:"Network", compute:"Compute", storage:"Storage", smart:"Smart Home", display:"Display", cooling:"Cooling", spare:"Spare", power:"Power" };
 
   const ELEVATION = [
-    { u:"18", name:"Exhaust fan panel (top-rear)", cat:"cooling", notes:"PWM, temp-driven off the rack sensor" },
-    { u:"15–16", name:"Screen module", cat:"display", notes:"7.84″ IPS bar display + 0.91″ secondary OLED + Raspberry Pi 4B, all in one printed 2U module" },
-    { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated" },
-    { u:"12–13", name:"Power (2U)", cat:"cooling", notes:"12V DC fan supply + cable pass-through — AC strips live outside the rack" },
-    { u:"11", name:"Cat6A patch panel", cat:"network", notes:"Office/rack drops only, 12-port" },
-    { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf, 2.5GbE throughout" },
-    { u:"9", name:"JetKVM shelf (×3)", cat:"compute", notes:"One per compute box: HA Pi, Mini PC 2, Mac Mini" },
-    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose sandbox, Grafana + Prometheus" },
-    { u:"6–7", name:"Pi Cluster Bay", cat:"compute", notes:"8-bay snap-in — slot 1 is the HA Pi, 7 spare for backlog expansion" },
-    { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve" },
-    { u:"3–4", name:"Spare (2U)", cat:"spare", notes:"Headroom — freed by the NAS cut, partly reclaimed by the Pi cluster bay" },
-    { u:"2", name:"HDD mount (2×3.5″ + USB dock)", cat:"storage", notes:"Caddy-less printed mount, macOS software RAID1" },
-    { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" },
-    { u:"17", name:"Mac Mini", cat:"compute", notes:"Personal/creative use only — not a service host" }
+    { u:"18", name:"Exhaust fan panel", cat:"cooling", notes:"Rear/top, PWM, temp-driven off rack sensor" },
+    { u:"16–17", name:"Spare (2U)", cat:"spare", notes:"Breathing room after the NAS cut, Mac Mini, HDD mount, and cluster bay additions" },
+    { u:"15", name:"Mac Mini", cat:"compute", notes:"Personal/creative use only — not a service host" },
+    { u:"13–14", name:"Screen module (Makerworld 2U print)", cat:"display", notes:"7.84″ IPS bar display (frameless!) + 0.91″ OLED + its own Raspberry Pi, all in one printed module" },
+    { u:"12", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status" },
+    { u:"10–11", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
+    { u:"9", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
+    { u:"8", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout" },
+    { u:"7", name:"JetKVM shelf (×3)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2, Mac Mini), direct cabling to each" },
+    { u:"6", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86" },
+    { u:"3–4", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Raspberry Pi 5 running HAOS. 7 slots spare — shared Mean Well supply means new nodes don't need new outlets" },
+    { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve — compressed to 1U, tighter single-row cutout layout" },
+    { u:"2", name:"HDD mount, 1U (2×3.5″ + USB dock)", cat:"storage", notes:"Caddy-less printed mount (PETG/ABS) + StarTech USB dock, macOS software RAID1 — Mac Mini's Time Machine/Lightroom storage" },
+    { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" }
   ];
   // Sort by top U number descending for display (bottom->top storage order, shown top-first)
   const ELEVATION_SORTED = ELEVATION.slice().sort((a,b)=> parseInt(b.u) - parseInt(a.u));
