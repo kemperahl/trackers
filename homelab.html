@@ -4,24 +4,42 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Homelab Ideas Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
 <style>
   :root{
     --bg:#f6f4ee; --surface:#ffffff; --ink:#2b2b26; --ink-soft:#6d6a5f; --line:#e3ddcd;
     --accent:#5b7065; --accent-soft:#dfe6df; --blue-gray:#6d8298; --blue-gray-soft:#e2e8ec;
     --warn:#a8583e; --warn-soft:#f1ded5; --radius:10px;
     --shadow:0 1px 2px rgba(30,28,20,0.06), 0 4px 16px rgba(30,28,20,0.06);
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+
+    --cat-cooling:#6b7684; --cat-cooling-bg:#e7eaed;
+    --cat-storage:#3f8763; --cat-storage-bg:#e2ede7;
+    --cat-smart:#ab8a1f;   --cat-smart-bg:#f0ead2;
+    --cat-compute:#6c50a0; --cat-compute-bg:#eae4f2;
+    --cat-network:#3d6f96; --cat-network-bg:#e0e9ee;
+    --cat-display:#2f8f8a; --cat-display-bg:#dfefed;
+    --cat-spare:#9a9488;   --cat-spare-bg:#ecebe6;
   }
   @media (prefers-color-scheme: dark){
     :root{
       --bg:#1c1b17; --surface:#242320; --ink:#eee9dd; --ink-soft:#a8a294; --line:#3a382f;
       --accent:#8fae9d; --accent-soft:#2c3630; --blue-gray:#8fa8bd; --blue-gray-soft:#28323a;
       --warn:#d18567; --warn-soft:#3a2620; --shadow:0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+
+      --cat-cooling:#9aa6b0; --cat-cooling-bg:#232b32;
+      --cat-storage:#6fbd93; --cat-storage-bg:#1d2b24;
+      --cat-smart:#d9bd5a;   --cat-smart-bg:#2c2716;
+      --cat-compute:#b39bd9; --cat-compute-bg:#251f30;
+      --cat-network:#85b3d6; --cat-network-bg:#1c2731;
+      --cat-display:#6fd0ca; --cat-display-bg:#17282a;
+      --cat-spare:#7d7a72;   --cat-spare-bg:#242320;
     }
   }
   *{ box-sizing:border-box; }
   body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.45; }
   h1,h2,h3{ font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:600; margin:0 0 4px; }
-  .wrap{ max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
+  .wrap{ max-width:1100px; margin:0 auto; padding:28px 24px 80px; }
 
   header.top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
   header.top h1{ font-size:26px; }
@@ -43,7 +61,7 @@
   @media (max-width:760px){ .grid.stats{ grid-template-columns:repeat(2,1fr); } }
   .stat-tile{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); }
   .stat-tile .label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; }
-  .stat-tile .value{ font-family:Georgia,serif; font-size:24px; margin-top:4px; }
+  .stat-tile .value{ font-family:Georgia,serif; font-size:22px; margin-top:4px; font-variant-numeric:tabular-nums; }
 
   .section-title{ display:flex; justify-content:space-between; align-items:center; margin:0 0 12px; }
 
@@ -79,17 +97,42 @@
 
   .empty{ color:var(--ink-soft); font-size:13px; font-style:italic; }
 
-  .stack-meta{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-soft); margin-bottom:14px; }
-  .stack-content{ font-size:14px; }
-  .stack-content h2{ font-size:16px; margin:22px 0 6px; }
-  .stack-content h2:first-child{ margin-top:0; }
-  .stack-content ul{ margin:4px 0 14px; padding-left:20px; }
-  .stack-content li{ margin-bottom:5px; }
-  .stack-content p{ margin:6px 0 14px; }
-  .stack-content strong{ font-weight:700; }
-  #stackEditArea{ width:100%; min-height:440px; font-family:ui-monospace,"SF Mono","Cascadia Code",monospace; font-size:13px; line-height:1.5; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); resize:vertical; }
-  .stack-edit-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
+  /* ---- Rack Stack ---- */
+  .stack-caption{ font-size:13px; color:var(--ink-soft); margin:-6px 0 22px; max-width:70ch; }
+  .stack-section{ margin-bottom:30px; }
+  .stack-section h3{
+    font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--ink-soft); font-weight:600; margin:0 0 10px; display:flex; align-items:center; gap:8px;
+  }
+  .stack-section h3 .dot{ width:8px; height:8px; border-radius:2px; display:inline-block; }
 
+  .stack-table-wrap{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); }
+  table.stack-table{ width:100%; border-collapse:collapse; font-size:13.5px; background:var(--surface); }
+  table.stack-table th{
+    text-align:left; font-family:var(--mono); font-size:10.5px; text-transform:uppercase; letter-spacing:.06em;
+    color:var(--ink-soft); background:var(--accent-soft); padding:9px 12px; border-bottom:1px solid var(--line);
+  }
+  table.stack-table td{ padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top; }
+  table.stack-table tr:last-child td{ border-bottom:none; }
+  table.stack-table td.mono{ font-family:var(--mono); font-size:12.5px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  table.stack-table td.item{ font-weight:600; width:26%; }
+
+  .cat-chip{ font-family:var(--mono); font-size:10px; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:4px; white-space:nowrap; }
+  .cat-cooling{ background:var(--cat-cooling-bg); color:var(--cat-cooling); }
+  .cat-storage{ background:var(--cat-storage-bg); color:var(--cat-storage); }
+  .cat-smart{ background:var(--cat-smart-bg); color:var(--cat-smart); }
+  .cat-compute{ background:var(--cat-compute-bg); color:var(--cat-compute); }
+  .cat-network{ background:var(--cat-network-bg); color:var(--cat-network); }
+  .cat-display{ background:var(--cat-display-bg); color:var(--cat-display); }
+  .cat-spare{ background:var(--cat-spare-bg); color:var(--cat-spare); }
+
+  .stack-legend{ display:flex; flex-wrap:wrap; gap:6px 14px; margin:10px 2px 28px; }
+  .stack-legend span{ display:flex; align-items:center; gap:6px; font-family:var(--mono); font-size:11px; color:var(--ink-soft); }
+  .stack-legend .dot{ width:8px; height:8px; border-radius:2px; }
+
+  .diagram-scroll{ overflow-x:auto; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); background:var(--surface); padding:16px; }
+
+  /* ---- Dialog ---- */
   dialog{ border:none; padding:0; border-radius:var(--radius); width:min(560px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
   dialog::backdrop{ background:rgba(20,20,15,0.45); }
   dialog form{ padding:20px 22px 18px; display:flex; flex-direction:column; gap:12px; }
@@ -173,22 +216,58 @@
 
     <!-- RACK STACK -->
     <section id="tab-stack" class="tab-panel">
-      <div class="section-title"><h2 style="font-size:17px;">Rack Stack</h2><button class="btn primary" data-action="edit-stack" id="stackEditBtn">Edit</button></div>
-      <div class="stack-meta"><span id="stackUpdated">Not yet edited — showing the default summary</span></div>
-      <div class="card" id="stackViewCard">
-        <div class="stack-content" id="stackView"></div>
+      <div class="section-title"><h2 style="font-size:17px;">Rack Stack</h2></div>
+      <p class="stack-caption">What's actually running on the 10&Prime; rack — hardware layout, per-machine software, and the network path. Maintained alongside the Obsidian project docs (Home Network &amp; Server Rack, Parts List, Software Stack) and the rack schematic — updated together, not left to drift.</p>
+
+      <div class="grid stats">
+        <div class="stat-tile"><div class="label">Rack size</div><div class="value">18U</div></div>
+        <div class="stat-tile"><div class="label">Headroom</div><div class="value">2U</div></div>
+        <div class="stat-tile"><div class="label">Location</div><div class="value" style="font-size:18px;">Office</div></div>
+        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$2.9–3.5k</div></div>
       </div>
-      <div class="card" id="stackEditCard" style="display:none;">
-        <textarea id="stackEditArea"></textarea>
-        <div class="stack-edit-actions">
-          <button type="button" class="btn ghost" id="stackCancel">Cancel</button>
-          <button type="button" class="btn primary" id="stackSave">Save</button>
+
+      <div class="stack-section">
+        <h3>Front Elevation — U1&ndash;U18, bottom to top</h3>
+        <div class="stack-table-wrap">
+          <table class="stack-table">
+            <thead><tr><th style="width:60px;">U</th><th>Component</th><th style="width:130px;">Category</th><th>Notes</th></tr></thead>
+            <tbody id="elevationBody"></tbody>
+          </table>
         </div>
-        <p class="hint">Plain text: <code>## Heading</code> for section headers, <code>- item</code> for bullets, <code>**bold**</code> for emphasis, blank line for a new paragraph.</p>
+        <div class="stack-legend" id="stackLegend"></div>
       </div>
+
+      <div class="stack-section">
+        <h3>Network Topology</h3>
+        <div class="diagram-scroll">
+          <pre class="mermaid" id="networkDiagram">
+flowchart LR
+  ONT["Optimum ONT<br/>fiber entry"] -->|Ethernet handoff| OGW["Optimum Gateway<br/>bridge mode"]
+  OGW -->|WAN1, primary| UGW["UCG-Max"]
+  FIVEG["UniFi 5G Backup"] -.->|WAN2, failover<br/>UPS-backed| UGW
+  UGW --> SW["UniFi Switch<br/>in rack"]
+  SW --> PP["Cat6A Patch Panel<br/>office/rack drops"]
+  UGW -.wireless mesh backhaul.-> AP1["AP 1"]
+  AP1 -.-> AP2["AP 2"]
+  AP2 -.-> AP3["AP 3"]
+  SW --> PI["HA Pi<br/>cluster bay, slot 1"]
+  SW --> PC2["Mini PC 2<br/>Services"]
+  SW --> MM["Mac Mini<br/>personal/creative"]
+  MM --- DAS["1U HDD mount + USB dock<br/>macOS RAID1"]
+  PI -.JetKVM.-> MGMT1(("Out-of-band<br/>mgmt"))
+  PC2 -.JetKVM.-> MGMT2(("Out-of-band<br/>mgmt"))
+  MM -.JetKVM, backup.-> MGMT3(("Out-of-band<br/>mgmt"))
+  MM ==HDMI/USB extender==> DESK["Desk<br/>daily use"]
+          </pre>
+        </div>
+      </div>
+
+      <div id="equipmentSections"></div>
+
+      <p class="hint">Rack elevation and topology mirror the working schematic in the Obsidian vault. If you change hardware or wiring there, this page gets updated in the same pass.</p>
     </section>
 
-    <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. Ideas is a backlog, not a commitment. Rack Stack is a living summary — update it as the build actually changes, not just the plan.</footer>
+    <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. Ideas is a backlog, not a commitment.</footer>
   </div>
 </div>
 
@@ -237,6 +316,9 @@
   </form>
 </dialog>
 
+<script>
+  mermaid.initialize({ startOnLoad:false, theme:"neutral", themeVariables:{ fontFamily:"ui-monospace, monospace", fontSize:"13px" } });
+</script>
 <script type="module">
 import { bindAuthUI, saveDoc } from "./firebase-sync.js";
 (function(){
@@ -245,84 +327,91 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   const DOC_PATH = "trackers/homelab";
   const CATEGORIES = ["Media","Photos","Productivity","Home Automation","Monitoring / Dev Tools","Networking","Fun / Games","Other"];
 
-  const DEFAULT_STACK_NOTES = [
-"## Networking",
-"- **UniFi Cloud Gateway Max (UCG-Max-NS)** — primary router. WAN1 = Optimum fiber (2Gbps), WAN2 = UniFi 5G Backup for outage failover. Runs UniFi OS with the Network app built in — no separate controller software to host.",
-"- **UniFi Flex 2.5G PoE switch** — in-rack switch, 2.5GbE throughout.",
-"- **3x UniFi APs (WiFi 7)** — wireless mesh backhaul, no Cat6 run to AP locations.",
-"- **Cat6A patch panel** — office/rack drops only.",
-"",
-"## Compute — Raspberry Pi 5 (Home Assistant)",
-"- HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out.",
-"- Lives in slot 1 of the 8-bay Pi cluster snap-in bay.",
-"- Runs: Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client.",
-"",
-"## Compute — Mini PC 2 (Services)",
-"- Plain Debian/Ubuntu Server. Docker + Docker Compose + Portainer.",
-"- Runs: Grafana + Prometheus + node_exporter, the NUT server (USB-connected to the UPS), and Homelab Ideas backlog services as they get deployed.",
-"",
-"## Compute — Mac Mini (personal/creative)",
-"- macOS, unchanged daily use — Lightroom/Photoshop.",
-"- Software RAID1 (AppleRAID) across 2x4TB drives in the printed 1U HDD mount — the Time Machine target and Lightroom library.",
-"- Off-site backup via Backblaze (or similar) — picks up the attached RAID automatically as part of the whole-machine backup.",
-"- HDMI/USB extender to the desk for daily use; JetKVM is backup/remote-access only, not the daily driver.",
-"",
-"## Pi Cluster Bay",
-"- 8-bay snap-in system (Option 2, Power + Cooling Extension).",
-"- Slot 1: the HA Pi. 7 spare slots — the natural home for backlog items that want their own dedicated node (redundant Pi-hole/AdGuard instances, for example) rather than another container on Mini PC 2.",
-"- Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips.",
-"",
-"## Screen Module (rack telemetry)",
-"- 2U printed module: 7.84\" IPS bar display + 0.91\" secondary OLED + its own Raspberry Pi 4B.",
-"- Raspberry Pi OS Lite, Chromium in kiosk mode pointed at Grafana (hosted on Mini PC 2).",
-"- The OLED runs directly off the Pi's own GPIO/I2C — shows IP/uptime/CPU even if the kiosk browser hangs.",
-"",
-"## Storage",
-"- 2x 4TB drives (e.g. WD Red Plus), mirrored via macOS software RAID1.",
-"- Printed caddy-less 1U HDD mount + a bare StarTech dual-bay USB-SATA dock.",
-"- No standalone NAS — cut in favor of this direct-attached setup once the Mac Mini joined the rack.",
-"",
-"## Smart Home Hubs (relocated, not new)",
-"- Hue Bridge, Ring Alarm base, SmartThings hub, B-hyve hub — physically moved into the rack's smart-hub tray, integrated into Home Assistant.",
-"",
-"## Lighting & Cooling",
-"- WLED-controlled LED matrix + accent strips, HA-integrated, shifts color on temperature.",
-"- PWM-controlled 120mm fans; a temp/humidity sensor on an ESPHome-flashed ESP32 feeds both HA and Grafana.",
-"",
-"## Power",
-"- 2x power strips, wall-mounted outside the rack — not an in-rack bracket.",
-"- UPS outside the rack. NUT server on Mini PC 2, clients on the HA Pi and Mac Mini, for coordinated graceful shutdown.",
-"- 5G backup modem (UniFi 5G Backup) on WAN2 — must be on the UPS to matter during an actual power outage."
-  ].join("\n");
+  const CAT_LABELS = { network:"Network", compute:"Compute", storage:"Storage", smart:"Smart Home", display:"Display", cooling:"Cooling", spare:"Spare" };
+
+  const ELEVATION = [
+    { u:"18", name:"Exhaust fan panel (top-rear)", cat:"cooling", notes:"PWM, temp-driven off the rack sensor" },
+    { u:"15–16", name:"Screen module", cat:"display", notes:"7.84″ IPS bar display + 0.91″ secondary OLED + Raspberry Pi 4B, all in one printed 2U module" },
+    { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated" },
+    { u:"12–13", name:"Power (2U)", cat:"cooling", notes:"12V DC fan supply + cable pass-through — AC strips live outside the rack" },
+    { u:"11", name:"Cat6A patch panel", cat:"network", notes:"Office/rack drops only, 12-port" },
+    { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf, 2.5GbE throughout" },
+    { u:"9", name:"JetKVM shelf (×3)", cat:"compute", notes:"One per compute box: HA Pi, Mini PC 2, Mac Mini" },
+    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose sandbox, Grafana + Prometheus" },
+    { u:"6–7", name:"Pi Cluster Bay", cat:"compute", notes:"8-bay snap-in — slot 1 is the HA Pi, 7 spare for backlog expansion" },
+    { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve" },
+    { u:"3–4", name:"Spare (2U)", cat:"spare", notes:"Headroom — freed by the NAS cut, partly reclaimed by the Pi cluster bay" },
+    { u:"2", name:"HDD mount (2×3.5″ + USB dock)", cat:"storage", notes:"Caddy-less printed mount, macOS software RAID1" },
+    { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" },
+    { u:"17", name:"Mac Mini", cat:"compute", notes:"Personal/creative use only — not a service host" }
+  ];
+  // Sort by top U number descending for display (bottom->top storage order, shown top-first)
+  const ELEVATION_SORTED = ELEVATION.slice().sort((a,b)=> parseInt(b.u) - parseInt(a.u));
+
+  const EQUIPMENT = [
+    { title:"Networking", rows:[
+      ["UniFi Cloud Gateway Max (UCG-Max-NS)", "Primary router. WAN1 = Optimum fiber (2Gbps), WAN2 = UniFi 5G Backup for outage failover. Runs UniFi OS with the Network app built in — no separate controller software to host."],
+      ["UniFi Flex 2.5G PoE switch", "In-rack switch, 2.5GbE throughout."],
+      ["3× UniFi APs (WiFi 7)", "Wireless mesh backhaul — no Cat6 run to AP locations."],
+      ["Cat6A patch panel", "Office/rack drops only."]
+    ]},
+    { title:"Compute — Raspberry Pi 5 (Home Assistant)", rows:[
+      ["OS", "HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out."],
+      ["Location", "Slot 1 of the 8-bay Pi cluster snap-in bay."],
+      ["Runs", "Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client."]
+    ]},
+    { title:"Compute — Mini PC 2 (Services)", rows:[
+      ["OS", "Plain Debian/Ubuntu Server."],
+      ["Container platform", "Docker + Docker Compose + Portainer."],
+      ["Runs", "Grafana + Prometheus + node_exporter, the NUT server (USB-connected to the UPS), and Homelab Ideas backlog services as they get deployed."]
+    ]},
+    { title:"Compute — Mac Mini (personal/creative)", rows:[
+      ["OS", "macOS, unchanged daily use — Lightroom/Photoshop."],
+      ["Storage", "Software RAID1 (AppleRAID) across 2×4TB drives in the printed 1U HDD mount — Time Machine target + Lightroom library."],
+      ["Off-site backup", "Backblaze (or similar) — picks up the attached RAID automatically as part of the whole-machine backup."],
+      ["Daily access", "HDMI/USB extender to the desk; JetKVM is backup/remote-access only."]
+    ]},
+    { title:"Pi Cluster Bay", rows:[
+      ["Hardware", "8-bay snap-in system (Option 2, Power + Cooling Extension)."],
+      ["Occupancy", "Slot 1: the HA Pi. 7 spare slots — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
+      ["Power", "Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips."]
+    ]},
+    { title:"Screen Module (rack telemetry)", rows:[
+      ["Hardware", "2U printed module: 7.84″ IPS bar display + 0.91″ secondary OLED + its own Raspberry Pi 4B."],
+      ["OS / software", "Raspberry Pi OS Lite, Chromium in kiosk mode pointed at Grafana (hosted on Mini PC 2)."],
+      ["Secondary OLED", "Runs directly off the Pi's own GPIO/I2C — shows IP/uptime/CPU even if the kiosk browser hangs."]
+    ]},
+    { title:"Storage", rows:[
+      ["Drives", "2×4TB (e.g. WD Red Plus), mirrored via macOS software RAID1."],
+      ["Mount", "Printed caddy-less 1U HDD mount + a bare StarTech dual-bay USB-SATA dock."],
+      ["NAS", "None — cut in favor of this direct-attached setup once the Mac Mini joined the rack."]
+    ]},
+    { title:"Smart Home Hubs (relocated, not new)", rows:[
+      ["Hue Bridge · Ring Alarm base · SmartThings hub · B-hyve hub", "Physically moved into the rack's smart-hub tray, integrated into Home Assistant."]
+    ]},
+    { title:"Lighting & Cooling", rows:[
+      ["Lighting", "WLED-controlled LED matrix + accent strips, HA-integrated, shifts color on temperature."],
+      ["Fans", "PWM-controlled 120mm fans."],
+      ["Sensor", "Temp/humidity via an ESPHome-flashed ESP32 — feeds both HA and Grafana."]
+    ]},
+    { title:"Power", rows:[
+      ["Strips", "2× power strips, wall-mounted outside the rack — not an in-rack bracket."],
+      ["UPS", "Outside the rack. NUT server on Mini PC 2, clients on the HA Pi and Mac Mini, for coordinated graceful shutdown."],
+      ["5G backup", "UniFi 5G Backup on WAN2 — must be on the UPS to matter during an actual power outage."]
+    ]}
+  ];
 
   const qs = (s,r)=> (r||document).querySelector(s);
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const escapeAttr = escapeHtml;
-  const formatDate = ts => ts ? new Date(ts).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}) : "";
 
-  function renderMarkdown(md){
-    const lines = (md||"").split("\n");
-    let html = ""; let inList = false;
-    const closeList = ()=>{ if(inList){ html += "</ul>"; inList=false; } };
-    const inline = s => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-    for(const raw of lines){
-      const line = raw.trim();
-      if(!line){ closeList(); continue; }
-      if(line.startsWith("## ")){ closeList(); html += `<h2>${inline(line.slice(3))}</h2>`; continue; }
-      if(line.startsWith("- ")){ if(!inList){ html+="<ul>"; inList=true; } html += `<li>${inline(line.slice(2))}</li>`; continue; }
-      closeList();
-      html += `<p>${inline(line)}</p>`;
-    }
-    closeList();
-    return html;
-  }
-
-  let state = { version:1, updatedAt:0, ideas:[], stackNotes:"", stackUpdatedAt:0 };
+  let state = { version:1, updatedAt:0, ideas:[] };
   let currentUser = null;
   let saveTimer = null;
   let pendingSave = false;
   let filters = { search:"", category:"", status:"" };
+  let stackRendered = false;
 
   function saveLocal(){ localStorage.setItem("homelabTrackerData", JSON.stringify(state)); }
   function persist(){
@@ -335,11 +424,9 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e)).finally(()=>{ pendingSave = false; });
     }, 350);
   }
-  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[], stackNotes:"", stackUpdatedAt:0 }; }
+  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[] }; }
   function normalizeState(s){
     if(!s.ideas) s.ideas = [];
-    if(s.stackNotes==null) s.stackNotes = "";
-    if(!s.stackUpdatedAt) s.stackUpdatedAt = 0;
     s.ideas.forEach(i=>{ if(!i.status) i.status = "Idea"; if(!i.priority) i.priority = "Medium"; });
     return s;
   }
@@ -350,7 +437,8 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     if(data){ state = normalizeState(data); }
     else { state = emptyState(); await saveDoc(DOC_PATH, state); }
     saveLocal();
-    renderAll();
+    renderIdeas();
+    renderStack();
   }
 
   bindAuthUI({
@@ -411,14 +499,37 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   }
 
   function renderStack(){
-    const md = state.stackNotes || DEFAULT_STACK_NOTES;
-    qs("#stackView").innerHTML = renderMarkdown(md);
-    qs("#stackUpdated").textContent = state.stackUpdatedAt
-      ? "Last updated " + formatDate(state.stackUpdatedAt)
-      : "Not yet edited — showing the default summary";
-  }
+    if(stackRendered) return; // static content — render once
+    stackRendered = true;
 
-  function renderAll(){ renderIdeas(); renderStack(); }
+    qs("#elevationBody").innerHTML = ELEVATION_SORTED.map(row => `
+      <tr>
+        <td class="mono">${escapeHtml(row.u)}</td>
+        <td class="item">${escapeHtml(row.name)}</td>
+        <td><span class="cat-chip cat-${row.cat}">${escapeHtml(CAT_LABELS[row.cat])}</span></td>
+        <td>${escapeHtml(row.notes)}</td>
+      </tr>`).join("");
+
+    const seenCats = [...new Set(ELEVATION.map(r=>r.cat))];
+    qs("#stackLegend").innerHTML = seenCats.map(c=>`<span><span class="dot cat-${c}" style="background:var(--cat-${c})"></span>${escapeHtml(CAT_LABELS[c])}</span>`).join("");
+
+    qs("#equipmentSections").innerHTML = EQUIPMENT.map(sec => `
+      <div class="stack-section">
+        <h3>${escapeHtml(sec.title)}</h3>
+        <div class="stack-table-wrap">
+          <table class="stack-table">
+            <thead><tr><th style="width:26%;">Item</th><th>Setup</th></tr></thead>
+            <tbody>
+              ${sec.rows.map(r => `<tr><td class="item">${escapeHtml(r[0])}</td><td>${escapeHtml(r[1])}</td></tr>`).join("")}
+            </tbody>
+          </table>
+        </div>
+      </div>`).join("");
+
+    if(window.mermaid){
+      try{ window.mermaid.run({ nodes: [qs("#networkDiagram")] }); }catch(e){ console.warn("mermaid render failed", e); }
+    }
+  }
 
   const ideaDialog = qs("#ideaDialog");
   function openIdeaDialog(id){
@@ -461,28 +572,6 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   });
   qs("#ideaCancel").addEventListener("click", ()=> ideaDialog.close());
 
-  // ---------- Rack Stack edit ----------
-  function openStackEdit(){
-    qs("#stackEditArea").value = state.stackNotes || DEFAULT_STACK_NOTES;
-    qs("#stackViewCard").style.display = "none";
-    qs("#stackEditCard").style.display = "";
-    qs("#stackEditBtn").style.display = "none";
-  }
-  function closeStackEdit(){
-    qs("#stackViewCard").style.display = "";
-    qs("#stackEditCard").style.display = "none";
-    qs("#stackEditBtn").style.display = "";
-  }
-  qs("#stackCancel").addEventListener("click", closeStackEdit);
-  qs("#stackSave").addEventListener("click", ()=>{
-    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
-    state.stackNotes = qs("#stackEditArea").value;
-    state.stackUpdatedAt = Date.now();
-    persist();
-    renderStack();
-    closeStackEdit();
-  });
-
   // ---------- Tabs ----------
   document.querySelectorAll(".tab-btn").forEach(btn=>{
     btn.addEventListener("click", ()=>{
@@ -490,6 +579,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
       btn.classList.add("active");
       qs("#"+btn.dataset.tab).classList.add("active");
+      if(btn.dataset.tab === "tab-stack") renderStack();
     });
   });
 
@@ -500,7 +590,6 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     const id = btn.dataset.id;
     if(action==="add-idea") openIdeaDialog(null);
     if(action==="edit-idea") openIdeaDialog(id);
-    if(action==="edit-stack") openStackEdit();
     if(action==="delete-idea"){
       if(!currentUser){ alert("You're signed out — sign in before deleting."); return; }
       if(!confirm("Delete this idea?")) return;
