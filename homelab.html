@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Homelab Ideas Tracker</title>
+<style>
+  :root{
+    --bg:#f6f4ee; --surface:#ffffff; --ink:#2b2b26; --ink-soft:#6d6a5f; --line:#e3ddcd;
+    --accent:#5b7065; --accent-soft:#dfe6df; --blue-gray:#6d8298; --blue-gray-soft:#e2e8ec;
+    --warn:#a8583e; --warn-soft:#f1ded5; --radius:10px;
+    --shadow:0 1px 2px rgba(30,28,20,0.06), 0 4px 16px rgba(30,28,20,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#1c1b17; --surface:#242320; --ink:#eee9dd; --ink-soft:#a8a294; --line:#3a382f;
+      --accent:#8fae9d; --accent-soft:#2c3630; --blue-gray:#8fa8bd; --blue-gray-soft:#28323a;
+      --warn:#d18567; --warn-soft:#3a2620; --shadow:0 1px 2px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.3);
+    }
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; line-height:1.45; }
+  h1,h2,h3{ font-family:Georgia,"Iowan Old Style","Times New Roman",serif; font-weight:600; margin:0 0 4px; }
+  .wrap{ max-width:1080px; margin:0 auto; padding:28px 24px 80px; }
+
+  header.top{ display:flex; justify-content:space-between; align-items:flex-start; gap:16px; flex-wrap:wrap; margin-bottom:18px; }
+  header.top h1{ font-size:26px; }
+  header.top .sub{ color:var(--ink-soft); font-size:14px; }
+  .conn-panel{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; font-size:13px; color:var(--ink-soft); }
+  .conn-row{ display:flex; gap:8px; align-items:center; }
+
+  .btn{ border:1px solid var(--line); background:var(--surface); color:var(--ink); padding:7px 13px; border-radius:8px; font-size:13px; cursor:pointer; }
+  .pill-back{ display:inline-flex; align-items:center; gap:6px; padding:9px 18px; border:1px solid var(--line); border-radius:999px; background:var(--surface); color:var(--ink); font-size:14px; font-weight:600; text-decoration:none; margin-bottom:10px; box-shadow:var(--shadow); }
+  .pill-back:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn:hover{ border-color:var(--accent); }
+  .btn.primary{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .btn.primary:hover{ opacity:0.92; }
+  .btn.ghost{ background:transparent; }
+  .btn.small{ padding:4px 10px; font-size:12px; }
+
+  .card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px; box-shadow:var(--shadow); }
+  .grid.stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:20px; }
+  @media (max-width:760px){ .grid.stats{ grid-template-columns:repeat(2,1fr); } }
+  .stat-tile{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); }
+  .stat-tile .label{ font-size:12px; color:var(--ink-soft); text-transform:uppercase; letter-spacing:.04em; }
+  .stat-tile .value{ font-family:Georgia,serif; font-size:24px; margin-top:4px; }
+
+  .section-title{ display:flex; justify-content:space-between; align-items:center; margin:0 0 12px; }
+
+  .filter-bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .filter-bar input, .filter-bar select{ padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); font-size:13px; }
+  .filter-bar input[type="text"]{ min-width:200px; flex:1; }
+
+  .idea-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+  .idea-card{ background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow); display:flex; flex-direction:column; gap:8px; }
+  .idea-card .ic-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .idea-card .ic-name{ font-weight:600; font-size:15px; }
+  .idea-card .ic-name a{ color:inherit; }
+  .idea-card .ic-cat{ font-size:12px; color:var(--ink-soft); }
+  .idea-card .ic-notes{ font-size:13px; color:var(--ink); white-space:pre-wrap; }
+  .idea-card .ic-badges{ display:flex; flex-wrap:wrap; gap:6px; }
+  .idea-card .ic-actions{ display:flex; gap:6px; margin-top:auto; padding-top:6px; }
+
+  .badge{ display:inline-block; border-radius:10px; padding:2px 8px; font-size:11px; font-weight:600; }
+  .badge.status-Idea{ background:var(--line); color:var(--ink-soft); }
+  .badge.status-Researching{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.status-Testing{ background:var(--warn-soft); color:var(--warn); }
+  .badge.status-Deployed{ background:var(--accent); color:#fff; }
+  .badge.status-Abandoned{ background:var(--line); color:var(--ink-soft); text-decoration:line-through; }
+  .badge.priority-High{ background:var(--warn-soft); color:var(--warn); }
+  .badge.priority-Medium{ background:var(--blue-gray-soft); color:var(--blue-gray); }
+  .badge.priority-Low{ background:var(--line); color:var(--ink-soft); }
+
+  .empty{ color:var(--ink-soft); font-size:13px; font-style:italic; }
+
+  dialog{ border:none; padding:0; border-radius:var(--radius); width:min(560px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
+  dialog::backdrop{ background:rgba(20,20,15,0.45); }
+  dialog form{ padding:20px 22px 18px; display:flex; flex-direction:column; gap:12px; }
+  dialog label{ font-size:13px; display:flex; flex-direction:column; gap:4px; color:var(--ink-soft); }
+  dialog input, dialog select, dialog textarea{ font-family:inherit; font-size:14px; color:var(--ink); background:var(--bg); border:1px solid var(--line); border-radius:7px; padding:8px 10px; }
+  dialog textarea{ min-height:70px; resize:vertical; }
+  .two-col{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  .dialog-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+
+  .hint{ font-size:12px; color:var(--ink-soft); margin-top:14px; }
+  footer.foot{ margin-top:40px; font-size:12px; color:var(--ink-soft); border-top:1px solid var(--line); padding-top:14px; }
+
+  @media (max-width:640px){
+    .wrap{ padding:14px 12px 84px; }
+    header.top{ flex-direction:column; align-items:stretch; gap:10px; }
+    .conn-panel{ align-items:stretch; }
+    .filter-bar{ flex-direction:column; align-items:stretch; }
+    .filter-bar input, .filter-bar select{ width:100%; }
+    .btn{ min-height:44px; padding:11px 18px; font-size:15px; }
+    dialog{ width:100vw; max-width:100vw; height:100vh; max-height:100vh; margin:0; inset:0; border-radius:0; }
+    dialog form{ padding:18px 16px calc(18px + env(safe-area-inset-bottom)); }
+    .two-col{ grid-template-columns:1fr; }
+    dialog input, dialog select, dialog textarea{ font-size:16px; padding:11px 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div>
+      <a href="index.html" class="pill-back">&larr; All trackers</a>
+      <h1>Homelab Ideas</h1>
+      <div class="sub">Apps &amp; services to self-host on the rack — no new hardware, just what already fits</div>
+    </div>
+    <div class="conn-panel">
+      <div class="conn-row" id="signedOutRow">
+        <input type="email" id="loginEmail" placeholder="Email" autocomplete="username" style="width:150px;">
+        <input type="password" id="loginPassword" placeholder="Password" autocomplete="current-password" style="width:120px;">
+        <button class="btn small" id="loginBtn">Sign in</button>
+      </div>
+      <div class="conn-row" id="signedInRow" style="display:none;">
+        <span id="connStatus">Not signed in</span>
+        <button class="btn ghost small" id="logoutBtn">Sign out</button>
+      </div>
+    </div>
+  </header>
+  <p class="hint" id="loginError" style="color:var(--warn); display:none;"></p>
+
+  <div id="signedOutGate" class="card" style="margin-top:20px;">
+    Sign in above to view and edit this tracker.
+  </div>
+
+  <div id="appContent" style="display:none;">
+    <div class="grid stats">
+      <div class="stat-tile"><div class="label">Total ideas</div><div class="value" id="statTotal">0</div></div>
+      <div class="stat-tile"><div class="label">Deployed</div><div class="value" id="statDeployed">0</div></div>
+      <div class="stat-tile"><div class="label">Testing</div><div class="value" id="statTesting">0</div></div>
+      <div class="stat-tile"><div class="label">On the backlog</div><div class="value" id="statBacklog">0</div></div>
+    </div>
+
+    <div class="section-title"><h2 style="font-size:17px;">Ideas</h2><button class="btn primary" data-action="add-idea">+ Add idea</button></div>
+    <form class="filter-bar" onsubmit="return false;">
+      <input type="text" id="filterSearch" placeholder="Search name, notes…">
+      <select id="filterCategory"><option value="">All categories</option></select>
+      <select id="filterStatus">
+        <option value="">All statuses</option>
+        <option>Idea</option><option>Researching</option><option>Testing</option><option>Deployed</option><option>Abandoned</option>
+      </select>
+      <button type="button" class="btn ghost small" id="filterClear">Clear</button>
+    </form>
+    <div id="ideaGrid" class="idea-grid"></div>
+
+    <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. This is a backlog, not a commitment — an idea sitting here doesn't mean it's getting deployed.</footer>
+  </div>
+</div>
+
+<dialog id="ideaDialog">
+  <form id="ideaForm">
+    <h3 id="ideaDialogTitle">Add Idea</h3>
+    <label>Name <input type="text" name="name" required placeholder="e.g. Immich, Uptime Kuma, Paperless-ngx"></label>
+    <div class="two-col">
+      <label>Category
+        <select name="category">
+          <option>Media</option>
+          <option>Photos</option>
+          <option>Productivity</option>
+          <option>Home Automation</option>
+          <option>Monitoring / Dev Tools</option>
+          <option>Networking</option>
+          <option>Fun / Games</option>
+          <option>Other</option>
+        </select>
+      </label>
+      <label>Status
+        <select name="status">
+          <option>Idea</option>
+          <option>Researching</option>
+          <option>Testing</option>
+          <option>Deployed</option>
+          <option>Abandoned</option>
+        </select>
+      </label>
+    </div>
+    <div class="two-col">
+      <label>Interest
+        <select name="priority">
+          <option>High</option>
+          <option selected>Medium</option>
+          <option>Low</option>
+        </select>
+      </label>
+      <label>Link <input type="url" name="url" placeholder="https://…"></label>
+    </div>
+    <label>Notes <textarea name="notes" placeholder="What it does, why it's interesting, resource needs, what it'd need to fit on the existing gear…"></textarea></label>
+    <div class="dialog-actions">
+      <button type="button" class="btn ghost" id="ideaCancel">Cancel</button>
+      <button type="submit" class="btn primary">Save Idea</button>
+    </div>
+  </form>
+</dialog>
+
+<script type="module">
+import { bindAuthUI, saveDoc } from "./firebase-sync.js";
+(function(){
+  "use strict";
+
+  const DOC_PATH = "trackers/homelab";
+  const CATEGORIES = ["Media","Photos","Productivity","Home Automation","Monitoring / Dev Tools","Networking","Fun / Games","Other"];
+
+  const qs = (s,r)=> (r||document).querySelector(s);
+  const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
+  const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+  const escapeAttr = escapeHtml;
+
+  let state = { version:1, updatedAt:0, ideas:[] };
+  let currentUser = null;
+  let saveTimer = null;
+  let pendingSave = false;
+  let filters = { search:"", category:"", status:"" };
+
+  function saveLocal(){ localStorage.setItem("homelabTrackerData", JSON.stringify(state)); }
+  function persist(){
+    state.updatedAt = Date.now();
+    saveLocal();
+    pendingSave = true;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(()=>{
+      if(!currentUser){ pendingSave = false; return; }
+      saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e)).finally(()=>{ pendingSave = false; });
+    }, 350);
+  }
+  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[] }; }
+  function normalizeState(s){
+    if(!s.ideas) s.ideas = [];
+    s.ideas.forEach(i=>{ if(!i.status) i.status = "Idea"; if(!i.priority) i.priority = "Medium"; });
+    return s;
+  }
+
+  async function onDataSnapshot(data, isLocalEcho){
+    if(isLocalEcho) return;
+    if(pendingSave) return;
+    if(data){ state = normalizeState(data); }
+    else { state = emptyState(); await saveDoc(DOC_PATH, state); }
+    saveLocal();
+    renderAll();
+  }
+
+  bindAuthUI({
+    docPath: DOC_PATH,
+    onData: onDataSnapshot,
+    onSignedIn: (user)=>{ currentUser = user; },
+    onSignedOut: ()=>{ currentUser = null; clearTimeout(saveTimer); pendingSave = false; state = emptyState(); }
+  });
+
+  function ideaCardHtml(i){
+    const linkName = i.url ? `<a href="${escapeAttr(i.url)}" target="_blank" rel="noopener">${escapeHtml(i.name)}</a>` : escapeHtml(i.name);
+    return `<div class="idea-card" data-id="${i.id}">
+      <div class="ic-top">
+        <div>
+          <div class="ic-name">${linkName}</div>
+          <div class="ic-cat">${escapeHtml(i.category)}</div>
+        </div>
+      </div>
+      <div class="ic-badges">
+        <span class="badge status-${(i.status||"").replace(/\s+/g,"")}">${escapeHtml(i.status)}</span>
+        <span class="badge priority-${i.priority}">${escapeHtml(i.priority)} interest</span>
+      </div>
+      ${i.notes?`<div class="ic-notes">${escapeHtml(i.notes)}</div>`:""}
+      <div class="ic-actions">
+        <button class="btn small" data-action="edit-idea" data-id="${i.id}">Edit</button>
+        <button class="btn ghost small" data-action="delete-idea" data-id="${i.id}">Delete</button>
+      </div>
+    </div>`;
+  }
+
+  function populateFilterCategory(){
+    const sel = qs("#filterCategory");
+    const current = sel.value;
+    sel.innerHTML = '<option value="">All categories</option>' + CATEGORIES.map(c=>`<option>${c}</option>`).join("");
+    sel.value = current;
+  }
+
+  function getFiltered(){
+    return state.ideas.filter(i=>{
+      if(filters.category && i.category!==filters.category) return false;
+      if(filters.status && i.status!==filters.status) return false;
+      if(filters.search){
+        const hay = ((i.name||"")+" "+(i.notes||"")).toLowerCase();
+        if(!hay.includes(filters.search.toLowerCase())) return false;
+      }
+      return true;
+    }).sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
+  }
+
+  function renderAll(){
+    qs("#statTotal").textContent = state.ideas.length;
+    qs("#statDeployed").textContent = state.ideas.filter(i=>i.status==="Deployed").length;
+    qs("#statTesting").textContent = state.ideas.filter(i=>i.status==="Testing").length;
+    qs("#statBacklog").textContent = state.ideas.filter(i=>["Idea","Researching"].includes(i.status)).length;
+
+    populateFilterCategory();
+    qs("#ideaGrid").innerHTML = getFiltered().map(ideaCardHtml).join("") || '<p class="empty">No ideas yet — add one to start the backlog.</p>';
+  }
+
+  const ideaDialog = qs("#ideaDialog");
+  function openIdeaDialog(id){
+    const form = qs("#ideaForm");
+    form.reset();
+    if(id){
+      const i = state.ideas.find(x=>x.id===id);
+      form.dataset.editingId = id;
+      qs("#ideaDialogTitle").textContent = "Edit Idea";
+      form.name.value = i.name;
+      form.category.value = i.category;
+      form.status.value = i.status;
+      form.priority.value = i.priority;
+      form.url.value = i.url || "";
+      form.notes.value = i.notes || "";
+    } else {
+      delete form.dataset.editingId;
+      qs("#ideaDialogTitle").textContent = "Add Idea";
+    }
+    ideaDialog.showModal();
+  }
+
+  qs("#ideaForm").addEventListener("submit", (ev)=>{
+    ev.preventDefault();
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
+    const form = ev.target;
+    const fd = new FormData(form);
+    const editingId = form.dataset.editingId || null;
+    const draft = editingId ? state.ideas.find(x=>x.id===editingId) : { id: uid(), createdAt: Date.now() };
+    draft.name = (fd.get("name")||"").trim();
+    draft.category = fd.get("category");
+    draft.status = fd.get("status");
+    draft.priority = fd.get("priority");
+    draft.url = (fd.get("url")||"").trim();
+    draft.notes = (fd.get("notes")||"").trim();
+    if(!editingId) state.ideas.push(draft);
+    persist();
+    renderAll();
+    ideaDialog.close();
+  });
+  qs("#ideaCancel").addEventListener("click", ()=> ideaDialog.close());
+
+  document.addEventListener("click", (ev)=>{
+    const btn = ev.target.closest("[data-action]");
+    if(!btn) return;
+    const action = btn.dataset.action;
+    const id = btn.dataset.id;
+    if(action==="add-idea") openIdeaDialog(null);
+    if(action==="edit-idea") openIdeaDialog(id);
+    if(action==="delete-idea"){
+      if(!currentUser){ alert("You're signed out — sign in before deleting."); return; }
+      if(!confirm("Delete this idea?")) return;
+      state.ideas = state.ideas.filter(i=>i.id!==id);
+      persist();
+      renderAll();
+    }
+  });
+
+  qs("#filterSearch").addEventListener("input", (e)=>{ filters.search = e.target.value; renderAll(); });
+  qs("#filterCategory").addEventListener("change", (e)=>{ filters.category = e.target.value; renderAll(); });
+  qs("#filterStatus").addEventListener("change", (e)=>{ filters.status = e.target.value; renderAll(); });
+  qs("#filterClear").addEventListener("click", ()=>{
+    filters = { search:"", category:"", status:"" };
+    qs("#filterSearch").value = ""; qs("#filterCategory").value = ""; qs("#filterStatus").value = "";
+    renderAll();
+  });
+})();
+</script>
+</body>
+</html>
