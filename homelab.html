@@ -47,6 +47,12 @@
 
   .section-title{ display:flex; justify-content:space-between; align-items:center; margin:0 0 12px; }
 
+  nav.tabs{ display:flex; gap:4px; border-bottom:1px solid var(--line); margin-bottom:22px; }
+  .tab-btn{ background:none; border:none; padding:10px 14px; font-size:14px; color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px; }
+  .tab-btn.active{ color:var(--ink); border-bottom-color:var(--accent); font-weight:600; }
+  .tab-panel{ display:none; }
+  .tab-panel.active{ display:block; }
+
   .filter-bar{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
   .filter-bar input, .filter-bar select{ padding:6px 8px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--ink); font-size:13px; }
   .filter-bar input[type="text"]{ min-width:200px; flex:1; }
@@ -72,6 +78,17 @@
   .badge.priority-Low{ background:var(--line); color:var(--ink-soft); }
 
   .empty{ color:var(--ink-soft); font-size:13px; font-style:italic; }
+
+  .stack-meta{ display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--ink-soft); margin-bottom:14px; }
+  .stack-content{ font-size:14px; }
+  .stack-content h2{ font-size:16px; margin:22px 0 6px; }
+  .stack-content h2:first-child{ margin-top:0; }
+  .stack-content ul{ margin:4px 0 14px; padding-left:20px; }
+  .stack-content li{ margin-bottom:5px; }
+  .stack-content p{ margin:6px 0 14px; }
+  .stack-content strong{ font-weight:700; }
+  #stackEditArea{ width:100%; min-height:440px; font-family:ui-monospace,"SF Mono","Cascadia Code",monospace; font-size:13px; line-height:1.5; padding:12px; border:1px solid var(--line); border-radius:8px; background:var(--bg); color:var(--ink); resize:vertical; }
+  .stack-edit-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:10px; }
 
   dialog{ border:none; padding:0; border-radius:var(--radius); width:min(560px,92vw); max-height:88vh; overflow:auto; background:var(--surface); color:var(--ink); box-shadow:var(--shadow); }
   dialog::backdrop{ background:rgba(20,20,15,0.45); }
@@ -127,26 +144,51 @@
   </div>
 
   <div id="appContent" style="display:none;">
-    <div class="grid stats">
-      <div class="stat-tile"><div class="label">Total ideas</div><div class="value" id="statTotal">0</div></div>
-      <div class="stat-tile"><div class="label">Deployed</div><div class="value" id="statDeployed">0</div></div>
-      <div class="stat-tile"><div class="label">Testing</div><div class="value" id="statTesting">0</div></div>
-      <div class="stat-tile"><div class="label">On the backlog</div><div class="value" id="statBacklog">0</div></div>
-    </div>
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-ideas">Ideas</button>
+      <button class="tab-btn" data-tab="tab-stack">Rack Stack</button>
+    </nav>
 
-    <div class="section-title"><h2 style="font-size:17px;">Ideas</h2><button class="btn primary" data-action="add-idea">+ Add idea</button></div>
-    <form class="filter-bar" onsubmit="return false;">
-      <input type="text" id="filterSearch" placeholder="Search name, notes…">
-      <select id="filterCategory"><option value="">All categories</option></select>
-      <select id="filterStatus">
-        <option value="">All statuses</option>
-        <option>Idea</option><option>Researching</option><option>Testing</option><option>Deployed</option><option>Abandoned</option>
-      </select>
-      <button type="button" class="btn ghost small" id="filterClear">Clear</button>
-    </form>
-    <div id="ideaGrid" class="idea-grid"></div>
+    <!-- IDEAS -->
+    <section id="tab-ideas" class="tab-panel active">
+      <div class="grid stats">
+        <div class="stat-tile"><div class="label">Total ideas</div><div class="value" id="statTotal">0</div></div>
+        <div class="stat-tile"><div class="label">Deployed</div><div class="value" id="statDeployed">0</div></div>
+        <div class="stat-tile"><div class="label">Testing</div><div class="value" id="statTesting">0</div></div>
+        <div class="stat-tile"><div class="label">On the backlog</div><div class="value" id="statBacklog">0</div></div>
+      </div>
 
-    <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. This is a backlog, not a commitment — an idea sitting here doesn't mean it's getting deployed.</footer>
+      <div class="section-title"><h2 style="font-size:17px;">Ideas</h2><button class="btn primary" data-action="add-idea">+ Add idea</button></div>
+      <form class="filter-bar" onsubmit="return false;">
+        <input type="text" id="filterSearch" placeholder="Search name, notes…">
+        <select id="filterCategory"><option value="">All categories</option></select>
+        <select id="filterStatus">
+          <option value="">All statuses</option>
+          <option>Idea</option><option>Researching</option><option>Testing</option><option>Deployed</option><option>Abandoned</option>
+        </select>
+        <button type="button" class="btn ghost small" id="filterClear">Clear</button>
+      </form>
+      <div id="ideaGrid" class="idea-grid"></div>
+    </section>
+
+    <!-- RACK STACK -->
+    <section id="tab-stack" class="tab-panel">
+      <div class="section-title"><h2 style="font-size:17px;">Rack Stack</h2><button class="btn primary" data-action="edit-stack" id="stackEditBtn">Edit</button></div>
+      <div class="stack-meta"><span id="stackUpdated">Not yet edited — showing the default summary</span></div>
+      <div class="card" id="stackViewCard">
+        <div class="stack-content" id="stackView"></div>
+      </div>
+      <div class="card" id="stackEditCard" style="display:none;">
+        <textarea id="stackEditArea"></textarea>
+        <div class="stack-edit-actions">
+          <button type="button" class="btn ghost" id="stackCancel">Cancel</button>
+          <button type="button" class="btn primary" id="stackSave">Save</button>
+        </div>
+        <p class="hint">Plain text: <code>## Heading</code> for section headers, <code>- item</code> for bullets, <code>**bold**</code> for emphasis, blank line for a new paragraph.</p>
+      </div>
+    </section>
+
+    <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. Ideas is a backlog, not a commitment. Rack Stack is a living summary — update it as the build actually changes, not just the plan.</footer>
   </div>
 </div>
 
@@ -203,12 +245,80 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   const DOC_PATH = "trackers/homelab";
   const CATEGORIES = ["Media","Photos","Productivity","Home Automation","Monitoring / Dev Tools","Networking","Fun / Games","Other"];
 
+  const DEFAULT_STACK_NOTES = [
+"## Networking",
+"- **UniFi Cloud Gateway Max (UCG-Max-NS)** — primary router. WAN1 = Optimum fiber (2Gbps), WAN2 = UniFi 5G Backup for outage failover. Runs UniFi OS with the Network app built in — no separate controller software to host.",
+"- **UniFi Flex 2.5G PoE switch** — in-rack switch, 2.5GbE throughout.",
+"- **3x UniFi APs (WiFi 7)** — wireless mesh backhaul, no Cat6 run to AP locations.",
+"- **Cat6A patch panel** — office/rack drops only.",
+"",
+"## Compute — Raspberry Pi 5 (Home Assistant)",
+"- HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out.",
+"- Lives in slot 1 of the 8-bay Pi cluster snap-in bay.",
+"- Runs: Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client.",
+"",
+"## Compute — Mini PC 2 (Services)",
+"- Plain Debian/Ubuntu Server. Docker + Docker Compose + Portainer.",
+"- Runs: Grafana + Prometheus + node_exporter, the NUT server (USB-connected to the UPS), and Homelab Ideas backlog services as they get deployed.",
+"",
+"## Compute — Mac Mini (personal/creative)",
+"- macOS, unchanged daily use — Lightroom/Photoshop.",
+"- Software RAID1 (AppleRAID) across 2x4TB drives in the printed 1U HDD mount — the Time Machine target and Lightroom library.",
+"- Off-site backup via Backblaze (or similar) — picks up the attached RAID automatically as part of the whole-machine backup.",
+"- HDMI/USB extender to the desk for daily use; JetKVM is backup/remote-access only, not the daily driver.",
+"",
+"## Pi Cluster Bay",
+"- 8-bay snap-in system (Option 2, Power + Cooling Extension).",
+"- Slot 1: the HA Pi. 7 spare slots — the natural home for backlog items that want their own dedicated node (redundant Pi-hole/AdGuard instances, for example) rather than another container on Mini PC 2.",
+"- Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips.",
+"",
+"## Screen Module (rack telemetry)",
+"- 2U printed module: 7.84\" IPS bar display + 0.91\" secondary OLED + its own Raspberry Pi 4B.",
+"- Raspberry Pi OS Lite, Chromium in kiosk mode pointed at Grafana (hosted on Mini PC 2).",
+"- The OLED runs directly off the Pi's own GPIO/I2C — shows IP/uptime/CPU even if the kiosk browser hangs.",
+"",
+"## Storage",
+"- 2x 4TB drives (e.g. WD Red Plus), mirrored via macOS software RAID1.",
+"- Printed caddy-less 1U HDD mount + a bare StarTech dual-bay USB-SATA dock.",
+"- No standalone NAS — cut in favor of this direct-attached setup once the Mac Mini joined the rack.",
+"",
+"## Smart Home Hubs (relocated, not new)",
+"- Hue Bridge, Ring Alarm base, SmartThings hub, B-hyve hub — physically moved into the rack's smart-hub tray, integrated into Home Assistant.",
+"",
+"## Lighting & Cooling",
+"- WLED-controlled LED matrix + accent strips, HA-integrated, shifts color on temperature.",
+"- PWM-controlled 120mm fans; a temp/humidity sensor on an ESPHome-flashed ESP32 feeds both HA and Grafana.",
+"",
+"## Power",
+"- 2x power strips, wall-mounted outside the rack — not an in-rack bracket.",
+"- UPS outside the rack. NUT server on Mini PC 2, clients on the HA Pi and Mac Mini, for coordinated graceful shutdown.",
+"- 5G backup modem (UniFi 5G Backup) on WAN2 — must be on the UPS to matter during an actual power outage."
+  ].join("\n");
+
   const qs = (s,r)=> (r||document).querySelector(s);
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   const escapeAttr = escapeHtml;
+  const formatDate = ts => ts ? new Date(ts).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"}) : "";
 
-  let state = { version:1, updatedAt:0, ideas:[] };
+  function renderMarkdown(md){
+    const lines = (md||"").split("\n");
+    let html = ""; let inList = false;
+    const closeList = ()=>{ if(inList){ html += "</ul>"; inList=false; } };
+    const inline = s => escapeHtml(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+    for(const raw of lines){
+      const line = raw.trim();
+      if(!line){ closeList(); continue; }
+      if(line.startsWith("## ")){ closeList(); html += `<h2>${inline(line.slice(3))}</h2>`; continue; }
+      if(line.startsWith("- ")){ if(!inList){ html+="<ul>"; inList=true; } html += `<li>${inline(line.slice(2))}</li>`; continue; }
+      closeList();
+      html += `<p>${inline(line)}</p>`;
+    }
+    closeList();
+    return html;
+  }
+
+  let state = { version:1, updatedAt:0, ideas:[], stackNotes:"", stackUpdatedAt:0 };
   let currentUser = null;
   let saveTimer = null;
   let pendingSave = false;
@@ -225,9 +335,11 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       saveDoc(DOC_PATH, state).catch(e=> console.error("cloud save failed", e)).finally(()=>{ pendingSave = false; });
     }, 350);
   }
-  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[] }; }
+  function emptyState(){ return { version:1, updatedAt: Date.now(), ideas:[], stackNotes:"", stackUpdatedAt:0 }; }
   function normalizeState(s){
     if(!s.ideas) s.ideas = [];
+    if(s.stackNotes==null) s.stackNotes = "";
+    if(!s.stackUpdatedAt) s.stackUpdatedAt = 0;
     s.ideas.forEach(i=>{ if(!i.status) i.status = "Idea"; if(!i.priority) i.priority = "Medium"; });
     return s;
   }
@@ -288,7 +400,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     }).sort((a,b)=> (b.createdAt||0)-(a.createdAt||0));
   }
 
-  function renderAll(){
+  function renderIdeas(){
     qs("#statTotal").textContent = state.ideas.length;
     qs("#statDeployed").textContent = state.ideas.filter(i=>i.status==="Deployed").length;
     qs("#statTesting").textContent = state.ideas.filter(i=>i.status==="Testing").length;
@@ -297,6 +409,16 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     populateFilterCategory();
     qs("#ideaGrid").innerHTML = getFiltered().map(ideaCardHtml).join("") || '<p class="empty">No ideas yet — add one to start the backlog.</p>';
   }
+
+  function renderStack(){
+    const md = state.stackNotes || DEFAULT_STACK_NOTES;
+    qs("#stackView").innerHTML = renderMarkdown(md);
+    qs("#stackUpdated").textContent = state.stackUpdatedAt
+      ? "Last updated " + formatDate(state.stackUpdatedAt)
+      : "Not yet edited — showing the default summary";
+  }
+
+  function renderAll(){ renderIdeas(); renderStack(); }
 
   const ideaDialog = qs("#ideaDialog");
   function openIdeaDialog(id){
@@ -334,10 +456,42 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     draft.notes = (fd.get("notes")||"").trim();
     if(!editingId) state.ideas.push(draft);
     persist();
-    renderAll();
+    renderIdeas();
     ideaDialog.close();
   });
   qs("#ideaCancel").addEventListener("click", ()=> ideaDialog.close());
+
+  // ---------- Rack Stack edit ----------
+  function openStackEdit(){
+    qs("#stackEditArea").value = state.stackNotes || DEFAULT_STACK_NOTES;
+    qs("#stackViewCard").style.display = "none";
+    qs("#stackEditCard").style.display = "";
+    qs("#stackEditBtn").style.display = "none";
+  }
+  function closeStackEdit(){
+    qs("#stackViewCard").style.display = "";
+    qs("#stackEditCard").style.display = "none";
+    qs("#stackEditBtn").style.display = "";
+  }
+  qs("#stackCancel").addEventListener("click", closeStackEdit);
+  qs("#stackSave").addEventListener("click", ()=>{
+    if(!currentUser){ alert("You're signed out — sign in before saving."); return; }
+    state.stackNotes = qs("#stackEditArea").value;
+    state.stackUpdatedAt = Date.now();
+    persist();
+    renderStack();
+    closeStackEdit();
+  });
+
+  // ---------- Tabs ----------
+  document.querySelectorAll(".tab-btn").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(p=>p.classList.remove("active"));
+      btn.classList.add("active");
+      qs("#"+btn.dataset.tab).classList.add("active");
+    });
+  });
 
   document.addEventListener("click", (ev)=>{
     const btn = ev.target.closest("[data-action]");
@@ -346,22 +500,23 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     const id = btn.dataset.id;
     if(action==="add-idea") openIdeaDialog(null);
     if(action==="edit-idea") openIdeaDialog(id);
+    if(action==="edit-stack") openStackEdit();
     if(action==="delete-idea"){
       if(!currentUser){ alert("You're signed out — sign in before deleting."); return; }
       if(!confirm("Delete this idea?")) return;
       state.ideas = state.ideas.filter(i=>i.id!==id);
       persist();
-      renderAll();
+      renderIdeas();
     }
   });
 
-  qs("#filterSearch").addEventListener("input", (e)=>{ filters.search = e.target.value; renderAll(); });
-  qs("#filterCategory").addEventListener("change", (e)=>{ filters.category = e.target.value; renderAll(); });
-  qs("#filterStatus").addEventListener("change", (e)=>{ filters.status = e.target.value; renderAll(); });
+  qs("#filterSearch").addEventListener("input", (e)=>{ filters.search = e.target.value; renderIdeas(); });
+  qs("#filterCategory").addEventListener("change", (e)=>{ filters.category = e.target.value; renderIdeas(); });
+  qs("#filterStatus").addEventListener("change", (e)=>{ filters.status = e.target.value; renderIdeas(); });
   qs("#filterClear").addEventListener("click", ()=>{
     filters = { search:"", category:"", status:"" };
     qs("#filterSearch").value = ""; qs("#filterCategory").value = ""; qs("#filterStatus").value = "";
-    renderAll();
+    renderIdeas();
   });
 })();
 </script>
