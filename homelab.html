@@ -240,25 +240,7 @@
       <div class="stack-section">
         <h3>Network Topology</h3>
         <div class="diagram-scroll">
-          <pre class="mermaid" id="networkDiagram">
-flowchart LR
-  ONT["Optimum ONT<br/>fiber entry"] -->|Ethernet handoff| OGW["Optimum Gateway<br/>bridge mode"]
-  OGW -->|WAN1, primary| UGW["UCG-Max"]
-  FIVEG["UniFi 5G Backup"] -.->|WAN2, failover<br/>UPS-backed| UGW
-  UGW --> SW["UniFi Switch<br/>in rack"]
-  SW --> PP["Cat6A Patch Panel<br/>office/rack drops"]
-  UGW -.wireless mesh backhaul.-> AP1["AP 1"]
-  AP1 -.-> AP2["AP 2"]
-  AP2 -.-> AP3["AP 3"]
-  SW --> PI["HA Pi<br/>cluster bay, slot 1"]
-  SW --> PC2["Mini PC 2<br/>Services"]
-  SW --> MM["Mac Mini<br/>personal/creative"]
-  MM --- DAS["1U HDD mount + USB dock<br/>macOS RAID1"]
-  PI -.JetKVM.-> MGMT1(("Out-of-band<br/>mgmt"))
-  PC2 -.JetKVM.-> MGMT2(("Out-of-band<br/>mgmt"))
-  MM -.JetKVM, backup.-> MGMT3(("Out-of-band<br/>mgmt"))
-  MM ==HDMI/USB extender==> DESK["Desk<br/>daily use"]
-          </pre>
+          <div id="networkDiagram"></div>
         </div>
       </div>
 
@@ -401,6 +383,26 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     ]}
   ];
 
+  const NETWORK_DIAGRAM_SRC = [
+    "flowchart LR",
+    '  ONT["Optimum ONT<br/>fiber entry"] -->|Ethernet handoff| OGW["Optimum Gateway<br/>bridge mode"]',
+    '  OGW -->|WAN1, primary| UGW["UCG-Max"]',
+    '  FIVEG["UniFi 5G Backup"] -.->|"WAN2, failover, UPS-backed"| UGW',
+    '  UGW --> SW["UniFi Switch<br/>in rack"]',
+    '  SW --> PP["Cat6A Patch Panel<br/>office/rack drops"]',
+    '  UGW -. "wireless mesh backhaul" .-> AP1["AP 1"]',
+    '  AP1 -.-> AP2["AP 2"]',
+    '  AP2 -.-> AP3["AP 3"]',
+    '  SW --> PI["HA Pi<br/>cluster bay, slot 1"]',
+    '  SW --> PC2["Mini PC 2<br/>Services"]',
+    '  SW --> MM["Mac Mini<br/>personal/creative"]',
+    '  MM --- DAS["1U HDD mount + USB dock<br/>macOS RAID1"]',
+    '  PI -. "JetKVM" .-> MGMT1(("Out-of-band<br/>mgmt"))',
+    '  PC2 -. "JetKVM" .-> MGMT2(("Out-of-band<br/>mgmt"))',
+    '  MM -. "JetKVM, backup" .-> MGMT3(("Out-of-band<br/>mgmt"))',
+    '  MM == "HDMI/USB extender" ==> DESK["Desk<br/>daily use"]'
+  ].join("\n");
+
   const qs = (s,r)=> (r||document).querySelector(s);
   const uid = ()=> (crypto && crypto.randomUUID) ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(16).slice(2);
   const escapeHtml = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
@@ -498,7 +500,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     qs("#ideaGrid").innerHTML = getFiltered().map(ideaCardHtml).join("") || '<p class="empty">No ideas yet — add one to start the backlog.</p>';
   }
 
-  function renderStack(){
+  async function renderStack(){
     if(stackRendered) return; // static content — render once
     stackRendered = true;
 
@@ -527,7 +529,13 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       </div>`).join("");
 
     if(window.mermaid){
-      try{ window.mermaid.run({ nodes: [qs("#networkDiagram")] }); }catch(e){ console.warn("mermaid render failed", e); }
+      try{
+        const { svg } = await window.mermaid.render("network-diagram-svg", NETWORK_DIAGRAM_SRC);
+        qs("#networkDiagram").innerHTML = svg;
+      }catch(e){
+        console.warn("mermaid render failed", e);
+        qs("#networkDiagram").innerHTML = '<p class="empty">Diagram failed to render — see console.</p>';
+      }
     }
   }
 
