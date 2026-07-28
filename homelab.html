@@ -399,9 +399,9 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     { u:"10–11", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
     { u:"9", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
     { u:"8", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout" },
-    { u:"7", name:"JetKVM shelf (×3)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2, Mac Mini), direct cabling to each" },
-    { u:"6", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86" },
-    { u:"3–4", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Raspberry Pi 5 running HAOS. 7 slots spare — shared Mean Well supply means new nodes don't need new outlets" },
+    { u:"7", name:"JetKVM shelf (×3)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2, Mac Mini) — the NAS Pi skips JetKVM, web/SSH-only admin" },
+    { u:"6", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86. Lab VLAN — deliberately not where the NAS drives live" },
+    { u:"3–4", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Pi 5, HAOS. Slot 2: Pi 4, OpenMediaVault + ZFS-mirrored NAS (2×2TB 2.5\", Trusted VLAN). 6 slots spare — shared Mean Well supply means new nodes don't need new outlets" },
     { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve — compressed to 1U, tighter single-row cutout layout" },
     { u:"2", name:"HDD mount, 1U (2×3.5″ + USB dock)", cat:"storage", notes:"Caddy-less printed mount (PETG/ABS) + StarTech USB dock, macOS software RAID1 — Mac Mini's Time Machine/Lightroom storage" },
     { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" }
@@ -417,9 +417,9 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Cat6A patch panel", "Office/rack drops only."]
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
-      ["Trusted", "Mac Mini, phones/laptops, NAS access. → HA (8123/443): allow. → Lab: allow."],
-      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, the HA Pi. → Internet: allow. → Trusted: block."],
-      ["Lab", "Mini PC 2, rest of the Pi cluster bay. → Internet: allow. → Trusted: block."],
+      ["Trusted", "Mac Mini, phones/laptops, the NAS Pi (cluster bay slot 2). → HA (8123/443): allow. → Lab: allow."],
+      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, the HA Pi (cluster bay slot 1). → Internet: allow. → Trusted: block."],
+      ["Lab", "Mini PC 2, future cluster bay nodes by default. → Internet: allow. → Trusted: block."],
       ["Guest", "Visitor WiFi. → everything but Internet: block."],
       ["SSIDs", "Realistically just Trusted + Guest on the 3 APs — most IoT devices listed are wired/Zigbee, not WiFi clients."]
     ]},
@@ -427,6 +427,15 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["OS", "HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out."],
       ["Location", "Slot 1 of the 8-bay Pi cluster snap-in bay."],
       ["Runs", "Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client."]
+    ]},
+    { title:"Compute — Raspberry Pi 4 (NAS)", rows:[
+      ["Added", "2026-07-28 — multi-device file access (Windows/Mac/iPhone) without drafting the Mac Mini into file-server duty, and without putting the drives on Mini PC 2's Lab VLAN where they'd share a blast radius with open-ended Docker experiments."],
+      ["OS", "OpenMediaVault, bare metal. Samba (SMB) — natively reachable from Windows, macOS Finder, and iOS Files with no extra app."],
+      ["Storage", "2× 2TB 2.5\" drives, ZFS mirror (via OMV's ZFS plugin) — bit-rot checksumming, a real step up from plain RAID1 for irreplaceable files. 2.5\" chosen for compactness, not performance."],
+      ["Location", "Slot 2 of the 8-bay Pi cluster snap-in bay, same shared Mean Well power as the HA Pi."],
+      ["Network", "Trusted VLAN — the entire reason this is a separate Pi rather than a share on Mini PC 2."],
+      ["Admin", "Web UI / SSH only — no JetKVM, unlike the other three compute boxes."],
+      ["Throughput ceiling", "Pi's onboard NIC is Gigabit, not 2.5G — fine for general file access, a real limit for large video work."]
     ]},
     { title:"Compute — Mini PC 2 (Services)", rows:[
       ["OS", "Plain Debian/Ubuntu Server."],
@@ -441,7 +450,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     ]},
     { title:"Pi Cluster Bay", rows:[
       ["Hardware", "8-bay snap-in system (Option 2, Power + Cooling Extension)."],
-      ["Occupancy", "Slot 1: the HA Pi. 7 spare slots — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
+      ["Occupancy", "Slot 1: the HA Pi. Slot 2: the NAS Pi. 6 spare slots — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
       ["Power", "Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips."]
     ]},
     { title:"Screen Module (rack telemetry)", rows:[
@@ -479,10 +488,14 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  UGW -. "wireless mesh backhaul" .-> AP1["AP 1"]',
     '  AP1 -.-> AP2["AP 2"]',
     '  AP2 -.-> AP3["AP 3"]',
-    '  SW --> PI["HA Pi<br/>cluster bay, slot 1"]',
-    '  SW --> PC2["Mini PC 2<br/>Services"]',
-    '  SW --> MM["Mac Mini<br/>personal/creative"]',
+    '  SW --> PI["HA Pi<br/>cluster bay, slot 1 · IoT VLAN"]',
+    '  SW --> NAS["NAS Pi<br/>cluster bay, slot 2 · Trusted VLAN"]',
+    '  SW --> PC2["Mini PC 2<br/>Services · Lab VLAN"]',
+    '  SW --> MM["Mac Mini<br/>personal/creative · Trusted VLAN"]',
     '  MM --- DAS["1U HDD mount + USB dock<br/>macOS RAID1"]',
+    '  NAS -. "SMB" .-> WIN["Windows"]',
+    '  NAS -. "SMB" .-> MAC["Mac"]',
+    '  NAS -. "SMB" .-> IOS["iPhone"]',
     '  PI -. "JetKVM" .-> MGMT1(("Out-of-band<br/>mgmt"))',
     '  PC2 -. "JetKVM" .-> MGMT2(("Out-of-band<br/>mgmt"))',
     '  MM -. "JetKVM, backup" .-> MGMT3(("Out-of-band<br/>mgmt"))',
@@ -530,10 +543,16 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     {id:"comp-extender", section:"Compute", name:"HDMI/USB extender to desk", costLabel:"$50-150", costLow:50, costHigh:150, notes:"Daily interactive use for the Mac Mini."},
     {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×3", costLabel:"$103 ea → $309", costLow:309, costHigh:309, notes:"One per compute box (HA Pi, Mini PC 2, Mac Mini)."},
 
-    // Storage
-    {id:"stor-hddmount", section:"Storage", name:"10\" Rack 1U 2×3.5\" HDD Mount (Makerworld, Flying4T)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG/ABS, not PLA — real airflow needed."},
-    {id:"stor-usbdock", section:"Storage", name:"StarTech dual-bay USB-to-SATA dock", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Bare bridge board, no case — macOS software RAID1."},
-    {id:"stor-drives", section:"Storage", name:"2× 4TB drives, mirrored (e.g. WD Red Plus)", costLabel:"$200 ea → $400", costLow:400, costHigh:400, notes:"Under-2TB library — real headroom."},
+    // Storage — 4a: Mac Mini backup (Time Machine / Lightroom)
+    {id:"stor-hddmount", section:"Storage", name:"10\" Rack 1U 2×3.5\" HDD Mount (Makerworld, Flying4T)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG/ABS, not PLA — real airflow needed. Mac Mini's dedicated backup, not the general NAS."},
+    {id:"stor-usbdock", section:"Storage", name:"StarTech dual-bay USB-to-SATA dock", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Bare bridge board, no case — macOS software RAID1. Feeds the Mac Mini only."},
+    {id:"stor-drives", section:"Storage", name:"2× 4TB drives, mirrored (e.g. WD Red Plus)", costLabel:"$200 ea → $400", costLow:400, costHigh:400, notes:"Under-2TB library — real headroom. Mac-Mini-only, stays separate from the multi-device NAS below."},
+
+    // Storage — 4b: multi-device NAS (Windows/Mac/iPhone), dedicated Pi, cluster bay slot 2
+    {id:"stor-naspi", section:"Storage", name:"Raspberry Pi 4 (4GB) — dedicated NAS node", costLabel:"$55-65", costLow:55, costHigh:65, notes:"Cluster bay slot 2. Pi 4 not 5 — bottleneck is the Gigabit NIC either way."},
+    {id:"stor-nasdrives", section:"Storage", name:"2× 2TB 2.5\" drives, ZFS mirror", costLabel:"$130-180 ea → $260-360", costLow:260, costHigh:360, notes:"2.5\" for compactness in the cluster bay footprint, not performance. True NAS-rated 2.5\" is limited — likely consumer-grade drives, an accepted tradeoff for secondary storage."},
+    {id:"stor-nasdock", section:"Storage", name:"USB dual-bay dock or 2× USB-SATA bridges (NAS Pi)", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Same approach as the Mac Mini's dock, feeding the NAS Pi instead."},
+    {id:"stor-nasmount", section:"Storage", name:"NAS Pi drive mount", costLabel:"TBD", costLow:null, costHigh:null, notes:"Cluster bay carriers are sized for Pi boards, not drives — confirm whether the ecosystem has a native drive carrier or a custom bracket is needed. Couldn't re-verify against the current Makerworld listing this session."},
 
     // Smart-home hubs
     {id:"smart-hue", section:"Smart-home hubs", name:"Philips Hue Bridge", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Relocate into the smart-hub tray."},
