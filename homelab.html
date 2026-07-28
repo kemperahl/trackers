@@ -253,9 +253,9 @@
 
       <div class="grid stats">
         <div class="stat-tile"><div class="label">Rack size</div><div class="value">18U</div></div>
-        <div class="stat-tile"><div class="label">Headroom</div><div class="value">1U</div></div>
+        <div class="stat-tile"><div class="label">Headroom</div><div class="value">0U</div></div>
         <div class="stat-tile"><div class="label">Location</div><div class="value" style="font-size:18px;">Office</div></div>
-        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$3.0–3.7k</div></div>
+        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$3.0–3.8k</div></div>
       </div>
 
       <div class="stack-section">
@@ -392,7 +392,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
 
   const ELEVATION = [
     { u:"18", name:"Exhaust fan panel", cat:"cooling", notes:"Rear/top, PWM, temp-driven off rack sensor" },
-    { u:"17", name:"Spare (1U)", cat:"spare", notes:"Down from 3U — most of the Mac Mini's freed space went to the Synology's shelf, still 1U better off than before the Mac Mini was removed" },
+    { u:"17", name:"Downstream switch, 8-port GbE (unmanaged)", cat:"network", notes:"Added 2026-07-28 to resolve the Flex switch's port budget — absorbs both JetKVMs, the screen module's Pi, and the patch panel's office/rack drops. Uses the last spare U; no room for a 2nd patch panel, so consolidating downstream was the cleaner fix" },
     { u:"15–16", name:"Screen module (Makerworld 2U print)", cat:"display", notes:"7.84″ IPS bar display (frameless!) + 0.91″ OLED + its own Raspberry Pi, all in one printed module" },
     { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status" },
     { u:"12–13", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
@@ -412,8 +412,9 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     { title:"Networking", rows:[
       ["UniFi Cloud Gateway Max (UCG-Max-NS)", "Primary router. WAN1 = Optimum fiber (2Gbps), WAN2 = UniFi 5G Backup for outage failover. Runs UniFi OS with the Network app built in — no separate controller software to host."],
       ["UniFi Flex 2.5G PoE switch", "In-rack switch, 2.5GbE throughout."],
+      ["Downstream switch, 8-port GbE (unmanaged)", "Added 2026-07-28 — the Flex switch's 8 ports were oversubscribed once every fixed in-rack device (5G backup, HA Pi, Mini PC 2, Synology, both JetKVMs, screen module's Pi) was counted, 7 of 8 claimed before the patch panel got a port. This absorbs both JetKVMs, the screen module's Pi, and the patch-panel office/rack drops, freeing 3 spare ports upstream for cluster-bay growth. Occupies U17, the rack's last spare U."],
       ["3× UniFi APs (WiFi 7)", "Wireless mesh backhaul — no Cat6 run to AP locations."],
-      ["Cat6A patch panel", "Office/rack drops only."]
+      ["Cat6A patch panel", "Office/rack drops only — now fed via the downstream switch, not directly off the Flex switch."]
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
       ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS. → HA (8123/443): allow. → Lab: allow."],
@@ -465,7 +466,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     ]},
     { title:"Power", rows:[
       ["Strips", "2× power strips, wall-mounted outside the rack — not an in-rack bracket."],
-      ["UPS", "Outside the rack. NUT server on Mini PC 2, client on the HA Pi, for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack."],
+      ["UPS", "Outside the rack. NUT server on Mini PC 2, client on the HA Pi, for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack. The downstream switch (added 2026-07-28) is recommended on a battery-backed outlet too — out-of-band JetKVM access is only useful if it survives the outage that made you need it."],
       ["5G backup", "UniFi 5G Backup on WAN2 — must be on the UPS to matter during an actual power outage."]
     ]}
   ];
@@ -476,19 +477,21 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  OGW -->|WAN1, primary| UGW["UCG-Max"]',
     '  FIVEG["UniFi 5G Backup"] -.->|"WAN2, failover, UPS-backed"| UGW',
     '  UGW --> SW["UniFi Switch<br/>in rack"]',
-    '  SW --> PP["Cat6A Patch Panel<br/>office/rack drops"]',
+    '  SW --> SW2["Downstream switch<br/>8-port GbE, unmanaged (U17)<br/>added 2026-07-28 — port budget fix"]',
+    '  SW2 --> PP["Cat6A Patch Panel<br/>office/rack drops"]',
     '  UGW -. "wireless mesh backhaul" .-> AP1["AP 1"]',
     '  AP1 -.-> AP2["AP 2"]',
     '  AP2 -.-> AP3["AP 3"]',
     '  SW --> PI["HA Pi<br/>cluster bay, slot 1 · IoT VLAN"]',
     '  SW --> NAS["Synology NAS, 2-bay<br/>DS223/DS224+ · Trusted VLAN"]',
     '  SW --> PC2["Mini PC 2<br/>Services · Lab VLAN"]',
+    '  SW2 --> SCR["Screen module Pi<br/>telemetry kiosk"]',
     '  MM["Mac Mini<br/>personal/creative · Trusted VLAN<br/>NOT in the rack — desk, network client only"] -. "SMB, remote backup" .-> NAS',
     '  NAS -. "SMB" .-> WIN["Windows"]',
     '  NAS -. "SMB" .-> MAC["Mac"]',
     '  NAS -. "SMB" .-> IOS["iPhone"]',
-    '  PI -. "JetKVM" .-> MGMT1(("Out-of-band<br/>mgmt"))',
-    '  PC2 -. "JetKVM" .-> MGMT2(("Out-of-band<br/>mgmt"))'
+    '  PI -. "JetKVM, via SW2" .-> MGMT1(("Out-of-band<br/>mgmt"))',
+    '  PC2 -. "JetKVM, via SW2" .-> MGMT2(("Out-of-band<br/>mgmt"))'
   ].join("\n");
 
   const SHOP_SECTIONS = ["Rack structure","Networking","Compute","Storage","Smart-home hubs","Display / telemetry / lighting","Power","Print materials"];
@@ -510,6 +513,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     // Networking
     {id:"net-ucgmax", section:"Networking", name:"UniFi Cloud Gateway Max (UCG-Max-NS)", costLabel:"$199", costLow:199, costHigh:199, notes:"WAN1 fiber, WAN2 = 5G backup."},
     {id:"net-switch", section:"Networking", name:"UniFi Flex 2.5G PoE switch", costLabel:"$199", costLow:199, costHigh:199, notes:"USW-Flex-2.5G-8-PoE, in-rack."},
+    {id:"net-downstreamswitch", section:"Networking", name:"Downstream switch, 8-port GbE (unmanaged)", costLabel:"$20-25", costLow:20, costHigh:25, notes:"Added 2026-07-28 — resolves the Flex switch's port budget (7 of 8 claimed by fixed devices before the patch panel got a port). Occupies U17, the last spare U."},
     {id:"net-aps", section:"Networking", name:"Access points ×3 (UniFi U7 Pro)", costLabel:"$189 ea → $567", costLow:567, costHigh:567, notes:"Wireless mesh backhaul, WiFi 7."},
     {id:"net-cat6a", section:"Networking", name:"Cat6A cable", costLabel:"$80-120", costLow:80, costHigh:120, notes:"Office/rack drops only."},
     {id:"net-keystones", section:"Networking", name:"Keystone jacks (Cat6A)", costLabel:"$25-40", costLow:25, costHigh:40, notes:""},
