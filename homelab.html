@@ -416,6 +416,13 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["3× UniFi APs (WiFi 7)", "Wireless mesh backhaul — no Cat6 run to AP locations."],
       ["Cat6A patch panel", "Office/rack drops only."]
     ]},
+    { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
+      ["Trusted", "Mac Mini, phones/laptops, NAS access. → HA (8123/443): allow. → Lab: allow."],
+      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, the HA Pi. → Internet: allow. → Trusted: block."],
+      ["Lab", "Mini PC 2, rest of the Pi cluster bay. → Internet: allow. → Trusted: block."],
+      ["Guest", "Visitor WiFi. → everything but Internet: block."],
+      ["SSIDs", "Realistically just Trusted + Guest on the 3 APs — most IoT devices listed are wired/Zigbee, not WiFi clients."]
+    ]},
     { title:"Compute — Raspberry Pi 5 (Home Assistant)", rows:[
       ["OS", "HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out."],
       ["Location", "Slot 1 of the 8-bay Pi cluster snap-in bay."],
