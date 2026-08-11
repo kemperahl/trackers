@@ -252,14 +252,14 @@
       <p class="stack-caption">What's actually running on the 10&Prime; rack — hardware layout, per-machine software, and the network path. Maintained alongside the Obsidian project docs (Home Network &amp; Server Rack, Parts List, Software Stack) and the rack schematic — updated together, not left to drift.</p>
 
       <div class="grid stats">
-        <div class="stat-tile"><div class="label">Rack size</div><div class="value">18U</div></div>
+        <div class="stat-tile"><div class="label">Rack size</div><div class="value">15U</div></div>
         <div class="stat-tile"><div class="label">Headroom</div><div class="value">0U</div></div>
         <div class="stat-tile"><div class="label">Location</div><div class="value" style="font-size:18px;">Office</div></div>
-        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$3.0–3.8k</div></div>
+        <div class="stat-tile"><div class="label">Est. cost</div><div class="value" style="font-size:17px;">$2.9–3.6k</div></div>
       </div>
 
       <div class="stack-section">
-        <h3>Front Elevation — U1&ndash;U18, bottom to top</h3>
+        <h3>Front Elevation — U1&ndash;U15, bottom to top</h3>
         <div class="stack-table-wrap">
           <table class="stack-table">
             <thead><tr><th style="width:60px;">U</th><th>Component</th><th style="width:130px;">Category</th><th>Notes</th></tr></thead>
@@ -391,17 +391,16 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   const CAT_LABELS = { network:"Network", compute:"Compute", storage:"Storage", smart:"Smart Home", display:"Display", cooling:"Cooling", spare:"Spare", power:"Power" };
 
   const ELEVATION = [
-    { u:"18", name:"Exhaust fan panel", cat:"cooling", notes:"Rear/top, PWM, temp-driven off rack sensor" },
-    { u:"17", name:"Downstream switch, 8-port GbE (unmanaged)", cat:"network", notes:"Added 2026-07-28 to resolve the Flex switch's port budget — absorbs both JetKVMs, the screen module's Pi, and the patch panel's office/rack drops. Uses the last spare U; no room for a 2nd patch panel, so consolidating downstream was the cleaner fix" },
-    { u:"15–16", name:"Screen module (Makerworld 2U print)", cat:"display", notes:"7.84″ IPS bar display (frameless!) + 0.91″ OLED + its own Raspberry Pi, all in one printed module" },
-    { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status" },
-    { u:"12–13", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through — AC strips still live outside the rack" },
+    { u:"15", name:"Exhaust fan panel", cat:"cooling", notes:"Rear/top, PWM, temp-driven off rack sensor" },
+    { u:"14", name:"LED matrix", cat:"display", notes:"WLED, HA-integrated, ambient/status. Cut, then reinstated, both 2026-07-28 — same day as the rack downsize and the Ring tray split" },
+    { u:"12–13", name:"Power (2U)", cat:"power", notes:"12V fan supply + cable pass-through. Briefly compressed to 1U to hit an interim 12U target; reverted to 2U the same day once the rack grew back to 15U anyway — AC strips still live outside the rack" },
     { u:"11", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
-    { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout" },
-    { u:"9", name:"JetKVM shelf (×2)", cat:"compute", notes:"One per compute box (Pi/HA, Mini PC 2) — the Synology skips JetKVM (its own DSM web admin), and the Mac Mini no longer needs one since it's not in the rack" },
-    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. Stays x86. Lab VLAN" },
-    { u:"6–7", name:"Rack Snap-in Cluster Bay (2U, 8 slots)", cat:"compute", notes:"Slot 1: Pi 5, HAOS. 7 slots spare (back up from 6 — the NAS Pi reverted to a proper Synology) — shared Mean Well supply means new nodes don't need new outlets" },
-    { u:"5", name:"Smart-hub tray", cat:"smart", notes:"Hue · Ring · SmartThings · B-hyve — compressed to 1U, tighter single-row cutout layout" },
+    { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout. No downstream switch needed — fixed device demand fits directly on this switch's 8 ports" },
+    { u:"9", name:"JetKVM shelf (×2)", cat:"compute", notes:"One per compute box in the rack (Mini PC 1 — HA, Mini PC 2 — services) — the Synology skips JetKVM (its own DSM web admin)" },
+    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. x86. Lab VLAN" },
+    { u:"7", name:"Mini PC 1 — Home Assistant", cat:"compute", notes:"Added 2026-07-28, replacing the Raspberry Pi 5 + cluster bay. HAOS bare metal (Generic x86-64 image — equally official as the Pi image). IoT VLAN" },
+    { u:"6", name:"Smart-hub tray — Hue · SmartThings · B-hyve", cat:"smart", notes:"Ring moved to its own tray below (2026-07-28) — down to 3 devices, still 1U" },
+    { u:"5", name:"Ring Alarm tray", cat:"smart", notes:"Split out from the shared smart-hub tray into its own 1U, 2026-07-28" },
     { u:"2–4", name:"Synology NAS, 2-bay (on its side)", cat:"storage", notes:"DS223/DS224+, 2× NAS-rated HDD mirrored — reverted 2026-07-28 from the Pi/OMV/ZFS-over-USB path (USB-SATA bridges can silently fail to honor write-flush commands, risking pool corruption). Time Machine + Lightroom backup target for the Mac Mini (remote, over SMB) + general multi-device storage. Custom-printed shelf/cradle, mounted low for stability" },
     { u:"1", name:"Intake fan panel (filtered)", cat:"cooling", notes:"Front, low — removable/cleanable filter" }
   ];
@@ -411,21 +410,20 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   const EQUIPMENT = [
     { title:"Networking", rows:[
       ["UniFi Cloud Gateway Max (UCG-Max-NS)", "Primary router. WAN1 = Optimum fiber (2Gbps), WAN2 = UniFi 5G Backup for outage failover. Runs UniFi OS with the Network app built in — no separate controller software to host."],
-      ["UniFi Flex 2.5G PoE switch", "In-rack switch, 2.5GbE throughout."],
-      ["Downstream switch, 8-port GbE (unmanaged)", "Added 2026-07-28 — the Flex switch's 8 ports were oversubscribed once every fixed in-rack device (5G backup, HA Pi, Mini PC 2, Synology, both JetKVMs, screen module's Pi) was counted, 7 of 8 claimed before the patch panel got a port. This absorbs both JetKVMs, the screen module's Pi, and the patch-panel office/rack drops, freeing 3 spare ports upstream for cluster-bay growth. Occupies U17, the rack's last spare U."],
+      ["UniFi Flex 2.5G PoE switch", "In-rack switch, 2.5GbE throughout. A downstream switch was briefly added and cut the same day (2026-07-28) — fixed device demand (6 of 8 ports) fits directly on this switch, no downstream unit needed."],
       ["3× UniFi APs (WiFi 7)", "Wireless mesh backhaul — no Cat6 run to AP locations."],
-      ["Cat6A patch panel", "Office/rack drops only — now fed via the downstream switch, not directly off the Flex switch."]
+      ["Cat6A patch panel", "Office/rack drops only — direct off the Flex switch."]
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
       ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS. → HA (8123/443): allow. → Lab: allow."],
-      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, the HA Pi (cluster bay slot 1). → Internet: allow. → Trusted: block."],
-      ["Lab", "Mini PC 2, future cluster bay nodes by default. → Internet: allow. → Trusted: block."],
+      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA). → Internet: allow. → Trusted: block."],
+      ["Lab", "Mini PC 2. → Internet: allow. → Trusted: block."],
       ["Guest", "Visitor WiFi. → everything but Internet: block."],
       ["SSIDs", "Realistically just Trusted + Guest on the 3 APs — most IoT devices listed are wired/Zigbee, not WiFi clients."]
     ]},
-    { title:"Compute — Raspberry Pi 5 (Home Assistant)", rows:[
-      ["OS", "HAOS bare metal, boots from a USB SSD, not microSD — HA's recorder writes constantly and wears SD cards out."],
-      ["Location", "Slot 1 of the 8-bay Pi cluster snap-in bay."],
+    { title:"Compute — Mini PC 1 (Home Assistant)", rows:[
+      ["OS", "HAOS bare metal, Generic x86-64 image — equally official as the Pi image, this is a preference swap back from a brief Raspberry Pi 5 + cluster bay stint (2026-07-27 → 2026-07-28)."],
+      ["Location", "Own dedicated shelf, own outlet — no shared cluster-bay power supply (the bay is cut)."],
       ["Runs", "Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client."]
     ]},
     { title:"Compute — Mini PC 2 (Services)", rows:[
@@ -439,16 +437,6 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Storage", "Local internal drive for the active Lightroom library — no more locally-attached external RAID. Time Machine now points at the Synology NAS over the network (SMB) instead of a direct-attached mirror. Worth confirming the Mac Mini's internal drive has enough headroom for the active library now that it can't lean on local external storage day-to-day."],
       ["Backup", "Time Machine → Synology NAS (network, from the office). Off-site: Backblaze (or similar) still covers the Mac Mini's internal drive as part of whole-machine backup."]
     ]},
-    { title:"Pi Cluster Bay", rows:[
-      ["Hardware", "8-bay snap-in system (Option 2, Power + Cooling Extension)."],
-      ["Occupancy", "Slot 1: the HA Pi. 7 spare slots (back up from 6 — the NAS Pi that briefly occupied slot 2 reverted to a proper Synology) — the natural home for backlog items wanting their own dedicated node (e.g. redundant Pi-hole/AdGuard instances)."],
-      ["Power", "Shared Mean Well LRS-200-5 supply + PDU feeds the whole bay from one outlet — adding Pi nodes later doesn't touch the main rack power strips."]
-    ]},
-    { title:"Screen Module (rack telemetry)", rows:[
-      ["Hardware", "2U printed module: 7.84″ IPS bar display + 0.91″ secondary OLED + its own Raspberry Pi 4B."],
-      ["OS / software", "Raspberry Pi OS Lite, Chromium in kiosk mode pointed at Grafana (hosted on Mini PC 2)."],
-      ["Secondary OLED", "Runs directly off the Pi's own GPIO/I2C — shows IP/uptime/CPU even if the kiosk browser hangs."]
-    ]},
     { title:"Storage — Synology NAS (reverted 2026-07-28)", rows:[
       ["Why reverted", "Went Synology → cut → Pi/OpenMediaVault/ZFS-over-USB → back to Synology, all the same day. The DIY path's real weakness: USB-SATA bridge boards can silently fail to honor write-flush commands, risking ZFS pool corruption on power loss — exactly what ZFS was chosen to prevent. The original \"doesn't fit\" objection to Synology is gone now that the Mac Mini's departure freed enough rack space."],
       ["Model", "DS223 or DS224+, 2-bay. DS224+ if you want Synology Photos face/object indexing without bogging down; DS223 if it's just storage + Time Machine."],
@@ -457,16 +445,17 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Mount", "Custom-printed shelf/cradle — desktop unit, not natively rack-mount, same situation as the UniFi gear. ~3U on its side."]
     ]},
     { title:"Smart Home Hubs (relocated, not new)", rows:[
-      ["Hue Bridge · Ring Alarm base · SmartThings hub · B-hyve hub", "Physically moved into the rack's smart-hub tray, integrated into Home Assistant."]
+      ["Hue Bridge · SmartThings hub · B-hyve hub", "Shared smart-hub tray, 1U. Integrated into Home Assistant."],
+      ["Ring Alarm base station", "Own dedicated 1U tray, split out 2026-07-28 (was sharing the tray above)."]
     ]},
     { title:"Lighting & Cooling", rows:[
-      ["Lighting", "WLED-controlled LED matrix + accent strips, HA-integrated, shifts color on temperature."],
+      ["Lighting", "WLED-controlled LED matrix + accent strips, HA-integrated, shifts color on temperature. Matrix was cut and reinstated the same day (2026-07-28)."],
       ["Fans", "PWM-controlled 120mm fans."],
       ["Sensor", "Temp/humidity via an ESPHome-flashed ESP32 — feeds both HA and Grafana."]
     ]},
     { title:"Power", rows:[
       ["Strips", "2× power strips, wall-mounted outside the rack — not an in-rack bracket."],
-      ["UPS", "Outside the rack. NUT server on Mini PC 2, client on the HA Pi, for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack. The downstream switch (added 2026-07-28) is recommended on a battery-backed outlet too — out-of-band JetKVM access is only useful if it survives the outage that made you need it."],
+      ["UPS", "Outside the rack. NUT server on Mini PC 2, client on Mini PC 1 (HA), for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack."],
       ["5G backup", "UniFi 5G Backup on WAN2 — must be on the UPS to matter during an actual power outage."]
     ]}
   ];
@@ -477,21 +466,19 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  OGW -->|WAN1, primary| UGW["UCG-Max"]',
     '  FIVEG["UniFi 5G Backup"] -.->|"WAN2, failover, UPS-backed"| UGW',
     '  UGW --> SW["UniFi Switch<br/>in rack"]',
-    '  SW --> SW2["Downstream switch<br/>8-port GbE, unmanaged (U17)<br/>added 2026-07-28 — port budget fix"]',
-    '  SW2 --> PP["Cat6A Patch Panel<br/>office/rack drops"]',
+    '  SW --> PP["Cat6A Patch Panel<br/>office/rack drops"]',
     '  UGW -. "wireless mesh backhaul" .-> AP1["AP 1"]',
     '  AP1 -.-> AP2["AP 2"]',
     '  AP2 -.-> AP3["AP 3"]',
-    '  SW --> PI["HA Pi<br/>cluster bay, slot 1 · IoT VLAN"]',
+    '  SW --> HAPC["Mini PC 1 — Home Assistant<br/>HAOS bare metal · IoT VLAN"]',
     '  SW --> NAS["Synology NAS, 2-bay<br/>DS223/DS224+ · Trusted VLAN"]',
     '  SW --> PC2["Mini PC 2<br/>Services · Lab VLAN"]',
-    '  SW2 --> SCR["Screen module Pi<br/>telemetry kiosk"]',
     '  MM["Mac Mini<br/>personal/creative · Trusted VLAN<br/>NOT in the rack — desk, network client only"] -. "SMB, remote backup" .-> NAS',
     '  NAS -. "SMB" .-> WIN["Windows"]',
     '  NAS -. "SMB" .-> MAC["Mac"]',
     '  NAS -. "SMB" .-> IOS["iPhone"]',
-    '  PI -. "JetKVM, via SW2" .-> MGMT1(("Out-of-band<br/>mgmt"))',
-    '  PC2 -. "JetKVM, via SW2" .-> MGMT2(("Out-of-band<br/>mgmt"))'
+    '  HAPC -. "JetKVM" .-> MGMT1(("Out-of-band<br/>mgmt"))',
+    '  PC2 -. "JetKVM" .-> MGMT2(("Out-of-band<br/>mgmt"))'
   ].join("\n");
 
   const SHOP_SECTIONS = ["Rack structure","Networking","Compute","Storage","Smart-home hubs","Display / telemetry / lighting","Power","Print materials"];
@@ -499,21 +486,21 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
   // costLow/costHigh in dollars, null when not a real one-time dollar cost (recurring, TBD, $0 config/software).
   const SEED_PARTS = [
     // Rack structure
-    {id:"rack-frame", section:"Rack structure", name:"KWS Rack frame, 18U, 10\"", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG — columns/rails."},
+    {id:"rack-frame", section:"Rack structure", name:"KWS Rack frame, 15U, 10\"", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PETG — columns/rails. Revised 2026-07-28: 18U → 12U (cut screen module/LED matrix/cluster bay) → 15U same day (LED matrix + 2U power reinstated, Ring split into its own tray)."},
     {id:"rack-shelves", section:"Rack structure", name:"Shelves — OpenGrid Heavy Duty Shelf (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Reused for mini PCs, gateway+switch, hub-tray base."},
     {id:"rack-sidewalls", section:"Rack structure", name:"Sidewalls — Sidewall for KWS Rack (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Honeycomb, not solid — real passive airflow."},
     {id:"rack-top", section:"Rack structure", name:"Top panel — Honeycomb top panel (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Finishing cap, matches sidewalls."},
     {id:"rack-cablemgmt", section:"Rack structure", name:"Cable management mounts (Makerworld, C1/C2/L1/L2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Print several — L1/L2 are for the LED strip wiring specifically."},
     {id:"rack-magnets", section:"Rack structure", name:"Patch panel magnets, 24× 6mm round", costLabel:"$8-12", costLow:8, costHigh:12, notes:"For the magnetic label system — grab the post-fix print file version."},
-    {id:"rack-trays", section:"Rack structure", name:"Custom trays/faceplates, labels", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PLA — cosmetic, better finish."},
+    {id:"rack-trays", section:"Rack structure", name:"Custom trays/faceplates, labels", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PLA — cosmetic, better finish. Includes the smart-hub tray (Hue/SmartThings/B-hyve) and Ring's own separate 1U tray, split 2026-07-28."},
     {id:"rack-intakefan", section:"Rack structure", name:"Intake fan filter media/mesh", costLabel:"$15-20", costLow:15, costHigh:20, notes:"Removable/cleanable."},
     {id:"rack-fans", section:"Rack structure", name:"120mm-class fans ×2-4", costLabel:"$30-50", costLow:30, costHigh:50, notes:"Quiet, low-RPM — office noise budget."},
-    {id:"rack-fancontroller", section:"Rack structure", name:"Fan controller (PWM, temp-driven)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Off the same sensor feeding the telemetry screen."},
+    {id:"rack-fancontroller", section:"Rack structure", name:"Fan controller (PWM, temp-driven)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Off the rack's temp/humidity sensor."},
 
     // Networking
     {id:"net-ucgmax", section:"Networking", name:"UniFi Cloud Gateway Max (UCG-Max-NS)", costLabel:"$199", costLow:199, costHigh:199, notes:"WAN1 fiber, WAN2 = 5G backup."},
     {id:"net-switch", section:"Networking", name:"UniFi Flex 2.5G PoE switch", costLabel:"$199", costLow:199, costHigh:199, notes:"USW-Flex-2.5G-8-PoE, in-rack."},
-    {id:"net-downstreamswitch", section:"Networking", name:"Downstream switch, 8-port GbE (unmanaged)", costLabel:"$20-25", costLow:20, costHigh:25, notes:"Added 2026-07-28 — resolves the Flex switch's port budget (7 of 8 claimed by fixed devices before the patch panel got a port). Occupies U17, the last spare U."},
+    {id:"net-downstreamswitch", section:"Networking", name:"~~Downstream switch, 8-port GbE (unmanaged)~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"Added 2026-07-28, cut the same day — the 12U redesign (screen module + cluster bay cut) dropped fixed switch-port demand to 6 of 8, so the patch panel fits directly on the Flex switch."},
     {id:"net-aps", section:"Networking", name:"Access points ×3 (UniFi U7 Pro)", costLabel:"$189 ea → $567", costLow:567, costHigh:567, notes:"Wireless mesh backhaul, WiFi 7."},
     {id:"net-cat6a", section:"Networking", name:"Cat6A cable", costLabel:"$80-120", costLow:80, costHigh:120, notes:"Office/rack drops only."},
     {id:"net-keystones", section:"Networking", name:"Keystone jacks (Cat6A)", costLabel:"$25-40", costLow:25, costHigh:40, notes:""},
@@ -525,16 +512,10 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     {id:"net-simdata", section:"Networking", name:"5G backup SIM / data plan", costLabel:"Recurring — TBD", costLow:null, costHigh:null, notes:"Confirm carrier + signal test at the rack location first."},
 
     // Compute
-    {id:"comp-pi5", section:"Compute", name:"Raspberry Pi 5 (8GB) — for Home Assistant", costLabel:"$80", costLow:80, costHigh:80, notes:"HAOS bare metal."},
-    {id:"comp-usbssd", section:"Compute", name:"USB SSD, 128-256GB", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Boot from this, not microSD."},
-    {id:"comp-naspi", section:"Compute", name:"~~Raspberry Pi 4 (4GB) — dedicated NAS node~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"Reverted 2026-07-28 back to a proper Synology NAS (see Storage) — a real reliability call: USB-SATA bridge boards can silently fail to honor write-flush commands, risking ZFS pool corruption on power loss."},
-    {id:"comp-clusterbay", section:"Compute", name:"Rack Snap-in Cluster Bay, 8-bay (Makerworld, Option 2)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"2U. Slot 1 = HA Pi, 7 spare (up from 6 — the NAS Pi reverted to Synology)."},
-    {id:"comp-meanwell", section:"Compute", name:"Mean Well LRS-200-5 power brick + PDU", costLabel:"$25-35", costLow:25, costHigh:35, notes:"Feeds the whole cluster bay from one outlet."},
-    {id:"comp-ptfix", section:"Compute", name:"PTFIX power distributors ×2", costLabel:"$15-30", costLow:15, costHigh:30, notes:"PDU → each carrier."},
-    {id:"comp-bayfans", section:"Compute", name:"40mm fans ×4 (cluster bay cooling)", costLabel:"$20-40", costLow:20, costHigh:40, notes:"Targeted cooling at the boards."},
+    {id:"comp-minipc1", section:"Compute", name:"Mini PC #1 (Home Assistant)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"Went Mini PC → Raspberry Pi 5 + cluster bay (2026-07-27) → back to a Mini PC (2026-07-28). No real downgrade either direction — HAOS's Generic x86-64 image is just as officially supported as the Pi image. N100/N305-class, same class as Mini PC #2. Own internal drive, no separate USB SSD needed."},
     {id:"comp-minipc2", section:"Compute", name:"Mini PC #2 (services)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"N100/N305-class, x86. Docker/Grafana/backlog host."},
     {id:"comp-macmini", section:"Compute", name:"Mac Mini", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Existing hardware — personal/creative box, not a service host. Revised 2026-07-28: lives at the desk, not in the rack at all — no extender, no JetKVM, no rack U."},
-    {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×2", costLabel:"$103 ea → $206", costLow:206, costHigh:206, notes:"One per compute box (HA Pi, Mini PC 2) — not the Synology (its own DSM web admin) and not the Mac Mini (not in the rack as of 2026-07-28)."},
+    {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×2", costLabel:"$103 ea → $206", costLow:206, costHigh:206, notes:"One per compute box (Mini PC 1 — HA, Mini PC 2 — services) — not the Synology (its own DSM web admin) and not the Mac Mini (not in the rack)."},
 
     // Storage — reverted 2026-07-28 (v3): back to a proper Synology NAS, not the Pi/OMV/ZFS-over-USB path
     {id:"stor-cage", section:"Storage", name:"~~4-bay hot-swap cage + caddies + pigtails + docks (DIY path)~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"No longer needed — a real NAS has its own internal drive bays."},
@@ -550,14 +531,8 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     {id:"smart-tray", section:"Smart-home hubs", name:"Custom tray with per-device cutouts", costLabel:"Filament only", costLow:0, costHigh:0, notes:"PLA, ventilated — 1U."},
 
     // Display / telemetry / lighting
-    {id:"disp-screenmodule", section:"Display / telemetry / lighting", name:"Screen module, 2U (Makerworld)", costLabel:"Filament only", costLow:0, costHigh:0, notes:"Bundles display, OLED, Pi mount, button, keystones."},
-    {id:"disp-ipsdisplay", section:"Display / telemetry / lighting", name:"7.84\" IPS bar display + driver (Wisecoco)", costLabel:"$45-55", costLow:45, costHigh:55, notes:"Order the FRAMELESS version."},
-    {id:"disp-oled", section:"Display / telemetry / lighting", name:"Secondary OLED, 0.91\" (SSD1306/I2C)", costLabel:"$1-2", costLow:1, costHigh:2, notes:""},
-    {id:"disp-pi4b", section:"Display / telemetry / lighting", name:"Raspberry Pi 4B (4GB)", costLabel:"$55-65", costLow:55, costHigh:65, notes:"Drives the screen module — kiosk Chromium."},
-    {id:"disp-microsd", section:"Display / telemetry / lighting", name:"MicroSD card, 32-64GB", costLabel:"$10-15", costLow:10, costHigh:15, notes:"For the screen module's Pi — fine for a kiosk browser."},
-    {id:"disp-button", section:"Display / telemetry / lighting", name:"12mm power button", costLabel:"$3-5", costLow:3, costHigh:5, notes:""},
-    {id:"disp-keystoneinserts", section:"Display / telemetry / lighting", name:"Keystone port inserts ×2 (or blanks)", costLabel:"$5-10", costLow:5, costHigh:10, notes:""},
-    {id:"disp-ledmatrix", section:"Display / telemetry / lighting", name:"LED matrix (WLED-compatible)", costLabel:"$25-40", costLow:25, costHigh:40, notes:""},
+    {id:"disp-screenmodule", section:"Display / telemetry / lighting", name:"~~Screen module, 2U (Makerworld)~~", costLabel:"Cut", costLow:0, costHigh:0, notes:"Cut 2026-07-28, part of the rack downsize. Grafana still runs (Mini PC 2) — just no dedicated in-rack display."},
+    {id:"disp-ledmatrix", section:"Display / telemetry / lighting", name:"LED matrix (WLED-compatible)", costLabel:"$25-40", costLow:25, costHigh:40, notes:"Cut, then reinstated, both 2026-07-28."},
     {id:"disp-ledstrip", section:"Display / telemetry / lighting", name:"Addressable LED strip (WS2812B/SK6812)", costLabel:"$20-30", costLow:20, costHigh:30, notes:"WLED-controlled accent lighting."},
     {id:"disp-wledcontroller", section:"Display / telemetry / lighting", name:"Extra small WLED controller", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Only if the matrix's controller has no spare channel."},
     {id:"disp-tasklight", section:"Display / telemetry / lighting", name:"Task light (battery/USB puck)", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Plain work light for maintenance."},
@@ -565,7 +540,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
 
     // Power
     {id:"power-strips", section:"Power", name:"2× power strips (16 outlets total), UL-listed", costLabel:"$40-60", costLow:40, costHigh:60, notes:"Wall-mounted outside the rack."},
-    {id:"power-12vsupply", section:"Power", name:"In-rack 12V DC supply", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Fan supply + cable pass-through, 2U."},
+    {id:"power-12vsupply", section:"Power", name:"In-rack 12V DC supply", costLabel:"$10-15", costLow:10, costHigh:15, notes:"Fan supply + cable pass-through, 2U (briefly compressed to 1U on 2026-07-28, reverted the same day)."},
     {id:"power-ups", section:"Power", name:"UPS", costLabel:"$150-250", costLow:150, costHigh:250, notes:"Outside the rack. Gateway/switch/5G backup must be on battery-backed outlets."},
     {id:"power-nut", section:"Power", name:"NUT integration (software)", costLabel:"$0 — software", costLow:0, costHigh:0, notes:"Clean shutdown on extended outages."},
     {id:"power-alarm", section:"Power", name:"UPS audible alarm — muted", costLabel:"$0 — config", costLow:0, costHigh:0, notes:"Office location — rely on app/HA alerts instead."},
