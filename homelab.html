@@ -222,6 +222,7 @@
       <button class="tab-btn active" data-tab="tab-ideas">Ideas</button>
       <button class="tab-btn" data-tab="tab-stack">Rack Stack</button>
       <button class="tab-btn" data-tab="tab-shopping">Shopping List</button>
+      <button class="tab-btn" data-tab="tab-migration">Migration Plan</button>
     </nav>
 
     <!-- IDEAS -->
@@ -298,6 +299,130 @@
       </div>
 
       <div id="shoppingSections"></div>
+    </section>
+
+    <!-- MIGRATION PLAN -->
+    <section id="tab-migration" class="tab-panel">
+      <div class="section-title"><h2 style="font-size:17px;">Migration Plan</h2></div>
+      <p class="stack-caption">Step-by-step network cutover (Nest &rarr; UniFi) and Home Assistant migration (Mac Mini/UTM &rarr; dedicated Mini PC), run as two separately-validated changes rather than one combined leap. Mirrors the Obsidian Migration Runbook doc &mdash; update both together.</p>
+
+      <div class="stack-section">
+        <h3>Phase 0 &mdash; Prep</h3>
+        <ul>
+          <li>Confirm exact Nest WiFi router model (determines clean bridge/AP mode vs. double-NAT later)</li>
+          <li>Note anything worth preserving: static IP reservations, port forwards, current SSID/password</li>
+          <li>HA: full backup (Settings &rarr; System &rarr; Backups), download a copy off-device</li>
+          <li>Ring app credentials/2FA on hand</li>
+          <li>Rack-mount and power UCG-Max + Flex switch, let firmware update</li>
+        </ul>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 1 &mdash; Sandbox the new network behind the old one</h3>
+        <p class="hint" style="margin-top:0;">Zero blast radius &mdash; nothing in the house depends on this yet.</p>
+        <ol>
+          <li>Cable: Nest LAN port &rarr; UCG-Max WAN port</li>
+          <li>Adopt UCG-Max, update firmware, run setup (gets a temporary private IP from Nest)</li>
+          <li>Cable UCG-Max &rarr; Flex switch via SFP+ DAC, adopt switch</li>
+          <li>Build VLANs: Trusted, IoT, Lab, Guest</li>
+          <li>Base firewall rules: IoT&rarr;Internet allow / IoT&rarr;Trusted block, Lab&rarr;Internet allow / Lab&rarr;Trusted block, Trusted&rarr;Lab allow, Guest isolated except internet</li>
+          <li>Create SSIDs: Trusted, IoT, Guest &mdash; IoT SSID is a new addition (Ring + B-hyve are WiFi-only, need a home on the IoT VLAN; Hue + SmartThings stay wired)</li>
+          <li>Test each SSID with a throwaway device before connecting anything real</li>
+        </ol>
+        <p style="font-weight:600; margin:18px 0 6px;">Configuring Trusted &rarr; HA (the one deliberate exception)</p>
+        <ol>
+          <li>Fixed IP first: DHCP reservation for the HA Mini PC</li>
+          <li>Separate zones: don't leave Trusted + IoT in the same default "Internal" zone</li>
+          <li>Default Trusted&rarr;IoT = Block (HA is the exception, not the rule)</li>
+          <li>Add exception: Source = Trusted, Destination = HA's reserved IP, Ports 8123 (+443), Allow &mdash; evaluated before the general block</li>
+          <li>Test: HA loads from a Trusted device; another IoT device (e.g. Hue bridge UI) does not</li>
+        </ol>
+        <p class="hint">One-directional only &mdash; HA cannot reach back into Trusted (IoT&rarr;Trusted block applies to it too). A future need for HA to reach into Trusted (presence detection, casting to Sonos/Chromecast) needs its own narrow exception, not a blanket opening.</p>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 2 &mdash; Validate new HA hardware, still on the OLD network</h3>
+        <ol>
+          <li>Flash HAOS onto the new Mini PC</li>
+          <li>Restore the Phase 0 backup</li>
+          <li>Shut down the Mac Mini's HA VM cleanly, move the Zigbee dongle to the new Mini PC (only exists once &mdash; forces this step to be sequential)</li>
+          <li>Plug the new Mini PC into the old Nest network (same flat LAN) &mdash; testing hardware only, no VLAN yet</li>
+          <li>Verify Zigbee, Hue, SmartThings, automations, dashboards all come back clean</li>
+          <li>Run 24&ndash;48h, Mac Mini VM off but not deleted &mdash; instant rollback</li>
+        </ol>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 3 &mdash; Cutover (~15&ndash;30 min outage)</h3>
+        <ol>
+          <li>Unplug WAN handoff from Nest, plug into UCG-Max</li>
+          <li>Confirm UCG-Max gets a public IP + internet</li>
+          <li>Plug Nest's LAN port into the Flex switch; use real bridge/AP mode if available, else disable Nest's own DHCP</li>
+        </ol>
+        <p class="hint">You likely don't have UniFi APs installed yet &mdash; Nest's own radios remain the only WiFi, just downstream of UCG-Max now. Keep Nest's SSID name/password exactly as-is through this phase; there's no separate "new" SSID to converge with until APs exist.</p>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 3.5 &mdash; Bring up UniFi APs (once purchased)</h3>
+        <ol>
+          <li>Install/power APs, adopt, configure wireless mesh backhaul</li>
+          <li>Create Trusted/IoT/Guest SSIDs on the APs &mdash; this is when "new" WiFi hardware actually starts broadcasting</li>
+          <li>Use SSID names visibly distinct from Nest's during this window &mdash; matching names risks a client silently landing on Nest's isolated network if it isn't a clean bridge, with no way to tell which devices have migrated</li>
+          <li>Migrate WiFi clients deliberately (Phase 4) rather than relying on auto-reconnect</li>
+          <li>Only converge/simplify SSID names after Nest is fully decommissioned (Phase 6)</li>
+        </ol>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 4 &mdash; Migrate devices, one at a time</h3>
+        <ul>
+          <li><strong>Ring:</strong> app &rarr; device &rarr; Change Wi-Fi Network &rarr; new IoT SSID, one device at a time. Alarm base station: wire to the switch directly if it has Ethernet. Sensors/keypad (Z-Wave) unaffected.</li>
+          <li><strong>Hue Bridge:</strong> Ethernet only &mdash; move the cable to IoT VLAN, app rediscovers automatically.</li>
+          <li><strong>SmartThings:</strong> same as Hue &mdash; move cable, rediscovers (may need a manual reconnect tap).</li>
+          <li><strong>B-hyve:</strong> WiFi-only &mdash; app &rarr; WiFi Setup &rarr; new IoT SSID.</li>
+          <li><strong>Synology:</strong> move cable to Trusted VLAN, confirm DSM reachable, re-check Mac Mini backup target resolves.</li>
+          <li><strong>Mac Mini / phones / laptops:</strong> join new Trusted SSID at your convenience.</li>
+          <li><strong>Guests:</strong> point to new Guest SSID once live.</li>
+        </ul>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 5 &mdash; Move HA into its final home</h3>
+        <ol>
+          <li>Physically move the validated Mini PC into the rack, onto its patch-panel drop</li>
+          <li>Assign that port to the IoT VLAN</li>
+          <li>Confirm the DHCP reservation still applies</li>
+          <li>Confirm HA's UI loads from a Trusted device</li>
+          <li>Spot-check integrations now that Hue/SmartThings/Ring/B-hyve have also moved to IoT VLAN</li>
+          <li>Stable a few days &rarr; decommission the Mac Mini's HA VM (keep the final backup archived on the Synology)</li>
+        </ol>
+      </div>
+
+      <div class="stack-section">
+        <h3>Phase 6 &mdash; Decommission Nest</h3>
+        <ol>
+          <li>Confirm Nest/Google Home app shows no connected devices left</li>
+          <li>Power down Nest router + points &mdash; keep as a labeled spare for a few weeks</li>
+          <li>Update Shopping List / Parts List to drop Nest as active infrastructure</li>
+          <li>Safe to simplify/rename SSIDs now &mdash; no second network left to collide with</li>
+        </ol>
+      </div>
+
+      <div class="stack-section">
+        <h3>Verification checklist</h3>
+        <p class="hint" style="margin-top:0;">Run after Phase 3, and again after Phase 5.</p>
+        <ul>
+          <li>Internet reachable from Trusted, IoT, and Lab VLANs</li>
+          <li>IoT &rarr; Trusted blocked; Lab &rarr; Trusted blocked</li>
+          <li>Trusted &rarr; HA reachable; Trusted &rarr; Lab reachable (Grafana/Portainer)</li>
+          <li>Guest isolated except internet</li>
+          <li>All Ring devices online; Hue scenes fire; SmartThings devices online; B-hyve schedule runs</li>
+          <li>No "unavailable" entities in HA, automations firing</li>
+          <li>Synology backups completing on the new network</li>
+        </ul>
+      </div>
+
+      <p class="hint">Full detail and rationale in the Obsidian vault's Migration Runbook doc &mdash; this tab is the working-through-it version.</p>
     </section>
 
     <footer class="foot">Runs on the same Ahl Trackers backend as House/Boat/Yard — sign in once, syncs everywhere. Ideas is a backlog, not a commitment.</footer>
