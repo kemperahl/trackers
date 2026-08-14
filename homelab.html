@@ -337,7 +337,16 @@
           <li>Add exception: Source = Trusted, Destination = HA's reserved IP, Ports 8123 (+443), Allow &mdash; evaluated before the general block</li>
           <li>Test: HA loads from a Trusted device; another IoT device (e.g. Hue bridge UI) does not</li>
         </ol>
-        <p class="hint">One-directional only &mdash; HA cannot reach back into Trusted (IoT&rarr;Trusted block applies to it too). A future need for HA to reach into Trusted (presence detection, casting to Sonos/Chromecast) needs its own narrow exception, not a blanket opening.</p>
+        <p class="hint">One-directional only &mdash; HA cannot reach back into Trusted (IoT&rarr;Trusted block applies to it too). A future need for HA to reach into Trusted needs its own narrow exception, not a blanket opening &mdash; see HA &rarr; Sonos below for a concrete example.</p>
+        <p style="font-weight:600; margin:18px 0 6px;">Configuring HA &rarr; Sonos (the mirror-image exception)</p>
+        <p class="hint" style="margin-top:0;">Sonos lives on Trusted, not IoT &mdash; both the native Sonos app and AirPlay depend on mDNS/Bonjour multicast, which doesn't cross VLANs without a fragile reflector setup, so Sonos sits with the phones/Macs that control it instead.</p>
+        <ol>
+          <li>Static IPs / DHCP reservations for the Sonos speakers on Trusted</li>
+          <li>Firewall rule: Source = HA's reserved IP, Destination = Sonos IPs, Allow &mdash; scoped to the ports Sonos control uses, not a blanket IoT&rarr;Trusted opening</li>
+          <li>Configure HA's Sonos integration with the static IPs directly rather than relying on auto-discovery &mdash; sidesteps needing multicast to cross the boundary</li>
+          <li>Test: HA casts to a speaker successfully; everything else on IoT still can't reach Trusted</li>
+        </ol>
+        <p class="hint">Known limitation, not solved here: Guest&rarr;Trusted stays blocked, so guests can't AirPlay to Sonos from their own phones on Guest WiFi.</p>
       </div>
 
       <div class="stack-section">
@@ -540,11 +549,11 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Cat6A patch panel", "Office/rack drops only — direct off the Flex switch."]
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
-      ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS. → HA (8123/443): allow. → Lab: allow."],
-      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA). → Internet: allow. → Trusted: block."],
+      ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS, Sonos speakers. → HA (8123/443): allow. → Lab: allow."],
+      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA). → Internet: allow. → Trusted: block, except HA → Sonos (specific IPs/ports, for casting)."],
       ["Lab", "Mini PC 2. → Internet: allow. → Trusted: block."],
-      ["Guest", "Visitor WiFi. → everything but Internet: block."],
-      ["SSIDs", "Realistically just Trusted + Guest on the 3 APs — most IoT devices listed are wired/Zigbee, not WiFi clients."]
+      ["Guest", "Visitor WiFi. → everything but Internet: block — incl. AirPlay to Sonos."],
+      ["SSIDs", "Trusted, IoT, Guest on the APs — IoT SSID added for Ring + B-hyve (WiFi-only); Hue + SmartThings stay wired."]
     ]},
     { title:"Compute — Mini PC 1 (Home Assistant)", rows:[
       ["OS", "HAOS bare metal, Generic x86-64 image — equally official as the Pi image, this is a preference swap back from a brief Raspberry Pi 5 + cluster bay stint (2026-07-27 → 2026-07-28)."],
