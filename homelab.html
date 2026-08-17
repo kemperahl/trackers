@@ -347,6 +347,14 @@
           <li>Test: HA casts to a speaker successfully; everything else on IoT still can't reach Trusted</li>
         </ol>
         <p class="hint">Known limitation, not solved here: Guest&rarr;Trusted stays blocked, so guests can't AirPlay to Sonos from their own phones on Guest WiFi.</p>
+        <p style="font-weight:600; margin:18px 0 6px;">Bambu P1S 3D printer &mdash; stays on IoT, unlike Sonos</p>
+        <p class="hint" style="margin-top:0;">Controlled from the Mac Mini and phone (both Trusted) too, but stays on IoT &mdash; not on LAN-only mode, so it phones home to Bambu's cloud, a real reason to keep it segmented. Bambu Studio's auto-discovery is broadcast (SSDP), which can't cross a routed VLAN boundary at all &mdash; no firewall rule fixes that. But unlike AirPlay, discovery only needs to work once: add the printer manually by IP + access code in Bambu Studio / Bambu Handy, then a narrow firewall exception handles ongoing control.</p>
+        <ol>
+          <li>Reserve a static IP for the printer on IoT</li>
+          <li>Firewall rule: Source = Mac Mini + phone, Destination = printer's IP, Allow &mdash; scoped to ports 990 (FTPS, file transfer), 8883 (MQTTS, control/status), 6000 (camera stream); confirm against the printer's own network settings, firmware can shift these</li>
+          <li>Add the printer manually by IP + access code in Bambu Studio and Bambu Handy, once</li>
+        </ol>
+        <p class="hint"><strong>Not yet configured</strong> &mdash; printer is still on the old Nest network as of 2026-08-14. Do this as part of its migration, not before.</p>
       </div>
 
       <div class="stack-section">
@@ -389,6 +397,7 @@
           <li><strong>Hue Bridge:</strong> Ethernet only &mdash; move the cable to IoT VLAN, app rediscovers automatically.</li>
           <li><strong>SmartThings:</strong> same as Hue &mdash; move cable, rediscovers (may need a manual reconnect tap).</li>
           <li><strong>B-hyve:</strong> WiFi-only &mdash; app &rarr; WiFi Setup &rarr; new IoT SSID.</li>
+          <li><strong>Bambu P1S printer:</strong> WiFi onto new IoT SSID, then reserve its static IP, add the Mac Mini/phone &rarr; printer exception (ports 990/8883/6000), re-add the printer manually by IP in Bambu Studio/Handy.</li>
           <li><strong>Synology:</strong> move cable to Trusted VLAN, confirm DSM reachable, re-check Mac Mini backup target resolves.</li>
           <li><strong>Mac Mini / phones / laptops:</strong> join new Trusted SSID at your convenience.</li>
           <li><strong>Guests:</strong> point to new Guest SSID once live.</li>
@@ -550,7 +559,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     ]},
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
       ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS, Sonos speakers. → HA (8123/443): allow. → Lab: allow."],
-      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA). → Internet: allow. → Trusted: block, except HA → Sonos (specific IPs/ports, for casting)."],
+      ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA), Bambu P1S 3D printer. → Internet: allow. → Trusted: block, except HA → Sonos (specific IPs/ports, for casting)."],
       ["Lab", "Mini PC 2. → Internet: allow. → Trusted: block."],
       ["Guest", "Visitor WiFi. → everything but Internet: block — incl. AirPlay to Sonos."],
       ["SSIDs", "Trusted, IoT, Guest on the APs — IoT SSID added for Ring + B-hyve (WiFi-only); Hue + SmartThings stay wired."]
