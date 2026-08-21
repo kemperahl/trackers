@@ -433,6 +433,7 @@
           <li>Internet reachable from Trusted, IoT, and Lab VLANs</li>
           <li>IoT &rarr; Trusted blocked; Lab &rarr; Trusted blocked</li>
           <li>Trusted &rarr; HA reachable; Trusted &rarr; Lab reachable (Grafana/Portainer)</li>
+          <li>Mini PC 2's switch port is a trunk &mdash; Proxmox host UI answers on Trusted, Docker VM lands on Lab, and Lab &rarr; Trusted is still blocked from inside the VM</li>
           <li>Guest isolated except internet</li>
           <li>All Ring devices online; Hue scenes fire; SmartThings devices online; B-hyve schedule runs</li>
           <li>No "unavailable" entities in HA, automations firing</li>
@@ -540,7 +541,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     { u:"11", name:"Cat6A patch panel, 12-port", cat:"network", notes:"Office/rack drops only — 3 APs run wireless mesh backhaul instead" },
     { u:"10", name:"UCG-Max + Flex 2.5G PoE switch", cat:"network", notes:"Shared shelf — sized for 2Gbps symmetric fiber, 2.5GbE throughout. No downstream switch needed — fixed device demand fits directly on this switch's 8 ports" },
     { u:"9", name:"JetKVM shelf (×2)", cat:"compute", notes:"One per compute box in the rack (Mini PC 1 — HA, Mini PC 2 — services) — the Synology skips JetKVM (its own DSM web admin)" },
-    { u:"8", name:"Mini PC 2 — Services", cat:"compute", notes:"Docker/Compose + Portainer + Grafana/Prometheus + Homelab Ideas backlog. x86. Lab VLAN" },
+    { u:"8", name:"Mini PC 2 — Services (Proxmox VE)", cat:"compute", notes:"Proxmox VE bare metal as of 2026-08-21 — LXC containers + a Debian VM running Docker/Compose/Portainer + Grafana/Prometheus. x86. Trunk port: host mgmt on Trusted VLAN, Docker sandbox VM on Lab VLAN" },
     { u:"7", name:"Mini PC 1 — Home Assistant", cat:"compute", notes:"Added 2026-07-28, replacing the Raspberry Pi 5 + cluster bay. HAOS bare metal (Generic x86-64 image — equally official as the Pi image). IoT VLAN" },
     { u:"6", name:"Smart-hub tray — Hue · SmartThings · B-hyve", cat:"smart", notes:"Ring moved to its own tray below (2026-07-28) — down to 3 devices, still 1U" },
     { u:"5", name:"Ring Alarm tray", cat:"smart", notes:"Split out from the shared smart-hub tray into its own 1U, 2026-07-28" },
@@ -560,7 +561,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     { title:"VLANs (native UniFi, no 3rd-party firewall)", rows:[
       ["Trusted", "Mac Mini (network client only, not physically racked), phones/laptops, the Synology NAS, Sonos speakers. → HA (8123/443): allow. → Lab: allow."],
       ["IoT / Smart Home", "Hue, Ring, SmartThings, B-hyve, Mini PC 1 (HA), Bambu P1S 3D printer. → Internet: allow. → Trusted: block, except HA → Sonos (specific IPs/ports, for casting)."],
-      ["Lab", "Mini PC 2. → Internet: allow. → Trusted: block."],
+      ["Lab", "Mini PC 2's Docker sandbox VM (not the whole box — the Proxmox host's management UI sits on Trusted). → Internet: allow. → Trusted: block. The switch port feeding Mini PC 2 is a trunk carrying tagged Trusted + Lab, not a Lab access port (2026-08-21)."],
       ["Guest", "Visitor WiFi. → everything but Internet: block — incl. AirPlay to Sonos."],
       ["SSIDs", "Trusted, IoT, Guest on the APs — IoT SSID added for Ring + B-hyve (WiFi-only); Hue + SmartThings stay wired."]
     ]},
@@ -569,10 +570,14 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
       ["Location", "Own dedicated shelf, own outlet — no shared cluster-bay power supply (the bay is cut)."],
       ["Runs", "Home Assistant Core, the ESPHome fan/temp controller integration, WLED integrations, NUT client."]
     ]},
-    { title:"Compute — Mini PC 2 (Services)", rows:[
-      ["OS", "Plain Debian/Ubuntu Server."],
-      ["Container platform", "Docker + Docker Compose + Portainer."],
-      ["Runs", "Grafana + Prometheus + node_exporter, the NUT server (USB-connected to the UPS), and Homelab Ideas backlog services as they get deployed."]
+    { title:"Compute — Mini PC 2 (Services — Proxmox VE)", rows:[
+      ["OS", "Proxmox VE, bare metal (installed 2026-08-21, replacing the planned plain Debian/Ubuntu install). Proxmox is Debian underneath — the workload plan didn't change, it just gained a management layer. Reverses the build's earlier \"no hypervisor anywhere\" rule, but only on this box: HA stays bare metal."],
+      ["Why", "Rollback, not isolation. Snapshot before a change, roll back in seconds when it breaks, delete a failed experiment instead of reinstalling the box. Nothing house-critical lives here, so it takes the whole upside at close to zero risk."],
+      ["Guest strategy", "LXC containers for anything that should look like its own machine with its own IP on its own VLAN (Pi-hole/AdGuard, Vaultwarden, Uptime Kuma). VMs for anything wanting a real kernel — including one Debian VM that hosts Docker + Compose + Portainer. Docker deliberately runs in a VM, not on the host and not in an LXC (Docker-in-LXC needs nesting/keyctl tweaks and breaks across Proxmox upgrades)."],
+      ["Networking", "VLAN-aware Linux bridge, per-guest VLAN tags. Host management UI on Trusted (it's an admin surface, same class as DSM or the UniFi controller); Docker sandbox VM on Lab, preserving the rule that experiments can't reach the NAS. Requires the switch port to be a trunk, not an access port."],
+      ["Backups", "Scheduled vzdump to the Synology over NFS — whole-guest images, restorable to a working machine rather than just an app config. Proxmox Backup Server deliberately skipped for now (better, but a second system to run)."],
+      ["Runs", "Grafana + Prometheus + node_exporter (in the Docker VM), prometheus-pve-exporter (on the host, for per-guest and host metrics), the NUT server (on the host — it orchestrates ordered guest shutdown), and Homelab Ideas backlog services as they get deployed."],
+      ["Post-install", "Repoint from the enterprise repo to pve-no-subscription to drop the login nag. Proxmox VE itself is free — $0 parts-list impact."]
     ]},
     { title:"Compute — Mac Mini (personal/creative)", rows:[
       ["OS", "macOS, unchanged daily use — Lightroom/Photoshop."],
@@ -598,7 +603,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     ]},
     { title:"Power", rows:[
       ["Strips", "2× power strips, wall-mounted outside the rack — not an in-rack bracket."],
-      ["UPS", "Outside the rack. NUT server on Mini PC 2, client on Mini PC 1 (HA), for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack."],
+      ["UPS", "Outside the rack. NUT server on the Proxmox host on Mini PC 2 (revised 2026-08-21 — on the host, not in a guest, since the host has to shut its own guests down in order first), client on Mini PC 1 (HA), for coordinated graceful shutdown. Mac Mini dropped as a client 2026-07-28 — it's no longer powered from this system now that it's out of the rack."],
       ["5G backup", "UniFi 5G Backup on WAN2 — must be on the UPS to matter during an actual power outage."]
     ]}
   ];
@@ -615,7 +620,10 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
     '  AP2 -.-> AP3["AP 3"]',
     '  SW --> HAPC["Mini PC 1 — Home Assistant<br/>HAOS bare metal · IoT VLAN"]',
     '  SW --> NAS["Synology NAS, 2-bay<br/>DS223/DS224+ · Trusted VLAN"]',
-    '  SW --> PC2["Mini PC 2<br/>Services · Lab VLAN"]',
+    '  SW -->|"trunk: tagged Trusted + Lab"| PC2["Mini PC 2 — Proxmox VE<br/>host mgmt on Trusted VLAN"]',
+    '  PC2 --> DVM["Docker VM<br/>Compose · Portainer · Grafana<br/>Lab VLAN"]',
+    '  PC2 --> LXC["LXC guests<br/>Pi-hole · Vaultwarden · Uptime Kuma<br/>Trusted VLAN"]',
+    '  PC2 -. "vzdump over NFS" .-> NAS',
     '  MM["Mac Mini<br/>personal/creative · Trusted VLAN<br/>NOT in the rack — desk, network client only"] -. "SMB, remote backup" .-> NAS',
     '  NAS -. "SMB" .-> WIN["Windows"]',
     '  NAS -. "SMB" .-> MAC["Mac"]',
@@ -656,7 +664,7 @@ import { bindAuthUI, saveDoc } from "./firebase-sync.js";
 
     // Compute
     {id:"comp-minipc1", section:"Compute", name:"Mini PC #1 (Home Assistant)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"Went Mini PC → Raspberry Pi 5 + cluster bay (2026-07-27) → back to a Mini PC (2026-07-28). No real downgrade either direction — HAOS's Generic x86-64 image is just as officially supported as the Pi image. N100/N305-class, same class as Mini PC #2. Own internal drive, no separate USB SSD needed."},
-    {id:"comp-minipc2", section:"Compute", name:"Mini PC #2 (services)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"N100/N305-class, x86. Docker/Grafana/backlog host."},
+    {id:"comp-minipc2", section:"Compute", name:"Mini PC #2 (services — Proxmox host)", costLabel:"$150-250", costLow:150, costHigh:250, notes:"N100/N305-class, x86. Runs Proxmox VE as of 2026-08-21 — Docker now lives in a VM on it. Spec toward the upper end on RAM (16GB min, 32GB if the gap is small) since running several guests at once is the point."},
     {id:"comp-macmini", section:"Compute", name:"Mac Mini", costLabel:"Already owned", costLow:0, costHigh:0, notes:"Existing hardware — personal/creative box, not a service host. Revised 2026-07-28: lives at the desk, not in the rack at all — no extender, no JetKVM, no rack U."},
     {id:"comp-jetkvm", section:"Compute", name:"JetKVM ×2", costLabel:"$103 ea → $206", costLow:206, costHigh:206, notes:"One per compute box (Mini PC 1 — HA, Mini PC 2 — services) — not the Synology (its own DSM web admin) and not the Mac Mini (not in the rack)."},
 
